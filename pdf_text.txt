@@ -1,0 +1,225 @@
+MAKTAB DAVOMAD VA FACE ID
+NAZORAT TIZIMI
+Texnik topshiriq (TZ) va tizim arxitekturasi
+Yangilangan professional variant
+Loyiha turiMarkaziy boshqaruvga ega maktab attendance 
+platformasi
+Asosiy platformalarWeb site + Management Telegram bot + Parent 
+Telegram bot
+Qurilma integratsiyasiFace ID terminal / biometrik qurilmalar bilan 
+integratsiya
+Ma'lumot markaziBarcha ma'lumotlar yagona markaziy serverda 
+saqlanadi
+Holat Qayta ko‘rib chiqilgan va kengaytirilgan TZ
+Maqsad: kod yozishda adashmaslik, vazifalarni bo‘limlarga ajratish va AI yordamida modulma-modul  
+ishlab chiqishni yengillashtirish.1. Loyiha maqsadi va umumiy tavsifi
+Ushbu loyiha maktablarda o‘quvchilar davomadini Face ID qurilmalari orqali avtomatik yig‘ish, markaziy 
+serverda saqlash, real vaqtga yaqin monitoring qilish va rahbarlar hamda ota-onalarga yetkazish uchun 
+yaratiladi.
+Tizimning yadro g‘oyasi — barcha maktablardagi Face ID qurilmalarni bitta markaziy backendga ulash, 
+attendance ma’lumotlarini yagona standartda saqlash va web hamda Telegram botlar orqali ko‘rsatish.
+Har bir maktabga alohida server o‘rnatilmaydi. Barcha qurilmalar markaziy serverga xavfsiz kanal orqali 
+bog‘lanadi va ma’lumotlar bitta markaziy ma’lumotlar bazasida saqlanadi.
+2. Tizimning asosiy biznes talablari
+Tizim maktab, tuman va viloyat darajasida davomadni ko‘rsatishi kerak.
+Har bir maktabdagi o‘quvchi tegishli sinf va maktabga bog‘langan bo‘lishi kerak.
+Face ID qurilmalari bilan ikki tomonlama integratsiya bo‘lishi kerak: qurilmaga ma’lumot yuborish va 
+qurilmadan ma’lumot olish.
+O‘quvchi maktabga kirganida va chiqqanida ota-onaga Telegram bot orqali xabar yuborilishi kerak.
+Barcha attendance tarixi, raw loglar, yakuniy attendance yozuvlari va tahlillar markaziy serverda 
+saqlanishi kerak.
+Tizimda rollar asosida ko‘rish va boshqarish chegaralari qat’iy ajratilgan bo‘lishi kerak.
+3. Markaziy arxitektura tamoyili
+Asosiy arxitektura quyidagicha bo‘ladi: Face ID qurilmalar → markaziy backend → attendance engine → 
+database → web dashboard / Telegram botlar.
+Qurilmalar maktabga bog‘lanadi, lekin ma’lumotlar maktab serverida emas, markaziy serverda saqlanadi.
+Har bir attendance hodisasi oldin raw log sifatida saqlanadi, keyin biznes qoidalariga ko‘ra yakuniy 
+attendance yozuviga aylantiriladi.
+Web site, management bot va parent bot bitta backend API orqali ishlaydi; ma’lumotning yagona manbai  
+markaziy backend bo‘ladi.
+4. Asosiy foydalanuvchilar va rollar
+Rol Ko‘rish huquqi Asosiy vakolatlar
+SuperadminBarcha viloyat, tuman, maktab, 
+sinf va qurilmalarRollar biriktirish, tizim sozlash, 
+barcha ma’lumotni ko‘rish, 
+xavfsizlik rejimlarini boshqarish
+Viloyat mudiriO‘z viloyati doirasidagi barcha 
+tuman va maktablarHududiy tahlil, statistik nazorat, 
+maktablar kesimida davomadni 
+ko‘rish
+Tuman mudiriO‘z tumani doirasidagi barcha 
+maktablarTuman darajasidagi tahlil va 
+monitoringDirektor Faqat o‘z maktabiSinf, o‘quvchi, o‘qituvchi holatini 
+ko‘rish; maktab kesimida tahlil 
+qilish
+Maktab operatori/dasturchisi Faqat o‘z maktabiSinf va o‘quvchilarni kiritish, ota-
+onani bog‘lash, qurilma bilan 
+texnik ishlash
+O‘qituvchi Faqat o‘z sinflariO‘quvchilar ro‘yxati va davomadni  
+ko‘rish
+Ota-ona Faqat o‘z farzandi/farzandlariKirish-chiqish, attendance holati 
+va bildirishnomalarni ko‘rish
+Muhim qoida:
+Bitta foydalanuvchi bir nechta rolga ega bo‘lishi mumkin. Masalan, direktor ayni paytda ota-ona ham 
+bo‘lishi mumkin. Bunday holatda tizim uning boshqaruv roli bilan ota-ona rolini mantiqan ajratib 
+ko‘rsatishi kerak.
+5. Role assignment qoidalari
+• Viloyat mudiri, tuman mudiri, direktor va maktab operatorini faqat superadmin biriktira oladi.
+• Maktab operatori yoki maktab dasturchisi ota-ona va o‘quvchi bog‘lanishini amalga oshira oladi.
+• Direktor o‘z maktabi bo‘yicha ma’lumotlarni ko‘radi, lekin boshqa maktab ma’lumotlariga kira 
+olmaydi.
+• Ota-onaga xabar yuborish student-parent bog‘lanishi asosida ishlaydi; boshqaruv roliga aloqador 
+emas.
+6. Ota-ona va o‘quvchi bog‘lanish modeli
+• Bitta ota-ona bir nechta farzandga bog‘lanishi mumkin.
+• Bitta o‘quvchi bir nechta mas’ul shaxsga bog‘lanishi mumkin: ota, ona, vasiy.
+• Farzandlar bir xil maktabda yoki turli maktablarda o‘qishi mumkin; tizim buni qo‘llab-quvvatlashi 
+shart.
+• Ota-ona bog‘lanishi telefon raqami asosida yaratiladi va Telegram botga kelgan foydalanuvchi shu 
+raqam orqali avtomatik bog‘lanadi.
+Auto-link jarayoni
+• Operator o‘quvchi uchun ota-onaning telefon raqamini tizimga kiritadi.
+• Tizim parent-student link yozuvini pending holatda saqlaydi.
+• Ota-ona Telegram botga kirib o‘z raqamini tasdiqlaydi.
+• Agar botdan kelgan raqam pending yozuv bilan mos tushsa, tizim parent userni yaratadi yoki mavjud  
+userga parent rolini qo‘shadi.
+• Shundan so‘ng o‘quvchi bilan ota-ona avtomatik bog‘lanadi va xabarlar yuborilishi boshlanadi.
+7. Face ID qurilmalar bilan integratsiya talablari
+• Tizim Face ID qurilmaga ulanib, device info olishi kerak.
+• Qurilmaga foydalanuvchi/o‘quvchi ma’lumotlarini yubora olishi kerak.
+• Agar model qo‘llab-quvvatlasa, rasm yoki face image yuborishi kerak.• Qurilmadan attendance hodisalarini va raw event loglarini olishi kerak.
+• Qurilmadan olingan ma’lumotlarni maktab, sinf, o‘quvchi bilan bog‘lab markaziy serverda saqlashi 
+kerak.
+• Integratsiya adapter pattern asosida yozilishi kerak, shunda keyin yangi brendlarni qo‘shish oson 
+bo‘ladi.
+Qo‘llab-quvvatlanadigan integratsiya darajalari
+Daraja Mazmuni Holati
+MinimalQurilmaga ulanish, device info, 
+log tortishMajburiy
+O‘rta User sync, delete, rasm yuborish Majburiy
+KengaytirilganReal-time push, 
+firmware/modelga mos maxsus 
+endpointlarKeyingi bosqich
+8. Attendance oqimi
+• Qurilmadan kelgan yoki server tortib olgan event avval raw log sifatida saqlanadi.
+• Raw log deduplication orqali tekshiriladi va takroriy yozuvlar bloklanadi.
+• Student identifikatsiyasi employeeNo / stable numeric ID / telefon mapping orqali bajariladi.
+• Keyin attendance engine check-in, check-out, late, absent kabi holatlarni hisoblaydi.
+• Yakuniy natija AttendanceRecord jadvaliga yoziladi.
+• Ota-onaga xabar yuborish attendance hodisasi muvaffaqiyatli qayd etilgandan keyin amalga 
+oshiriladi.
+9. Bildirishnomalar va Telegram botlar
+Tizimda ikki xil bot tavsiya etiladi:
+• Management bot — direktor, operator, tuman va viloyat rahbarlari uchun.
+• Parent bot — ota-onalar uchun.
+Parent bot funksiyalari
+• Farzand maktabga kirganda xabar yuborish.
+• Farzand maktabdan chiqqanda xabar yuborish.
+• Bugungi attendance holatini ko‘rsatish.
+• Bir nechta farzand bo‘lsa, ularning barchasini bir bot ichida ko‘rsatish.
+• Farzand turli maktablarda o‘qigan taqdirda ham maktab nomi bilan ko‘rsatish.
+Management bot funksiyalari
+• Direktorga o‘z maktabi bo‘yicha bugungi davomad, kechikishlar va qurilma holatini ko‘rsatish.
+• Viloyat va tuman rahbariga o‘z hududi bo‘yicha umumiy statistikani ko‘rsatish.
+• Operatorga texnik sync yoki log import natijalari haqida xabar berish.
+10. Web site funksional talablari
+• Role-based dashboardlar: superadmin, viloyat mudiri, tuman mudiri, direktor, operator.• Maktab, sinf, o‘quvchi va ota-ona boshqaruvi.
+• Face ID qurilmalar ro‘yxati, ulanish testi, sync holati va log import natijalari.
+• Attendance sahifalari: kunlik, haftalik, oylik va drill-down tahlillar.
+• Audit log va tizim diagnostikasi sahifalari.
+11. Markaziy server talablari
+• Barcha maktablar uchun yagona markaziy server ishlatiladi.
+• Barcha attendance va raw loglar yagona PostgreSQL ma’lumotlar bazasida saqlanadi.
+• Async vazifalar (notification, sync, log pull, analytics) queue orqali bajariladi.
+• Server real vaqtda yoki real vaqtga yaqin monitoringni qo‘llashi kerak.
+• Tizim kengayadigan arxitekturada yozilishi kerak: yangi maktab va yangi qurilma qo‘shilganda tizim 
+buzilmasligi kerak.
+12. Tavsiya etilgan texnologik stack
+Qatlam Tavsiya Izoh
+BackendDjango + Django REST 
+FrameworkMarkaziy API, admin logika, role-
+based access uchun qulay
+Database PostgreSQLKatta hajmli structured data 
+uchun
+Queue / cache Redis + CeleryNotification, sync va log pull 
+tasklar uchun
+Realtime Django Channels / WebSocket Dashboard yangilanishlari uchun
+Frontend React + Tailwind Boshqaruv paneli uchun
+Bots Python Telegram bot serviceParent va management botlar 
+uchun
+Container Docker + docker-composeDevelopment va deployment 
+uchun
+13. Tavsiya etilgan ma’lumotlar modeli
+• users — umumiy foydalanuvchilar
+• roles va user_roles — rollar va ularning bog‘lanishi
+• regions, districts, schools, classes — tashkiliy tuzilma
+• students, teachers, parents, parent_student_links — o‘quvchi va bog‘lanishlar
+• devices — Face ID qurilmalar
+• device_user_sync — qaysi o‘quvchi qaysi qurilmaga sync qilinganini kuzatish
+• device_raw_logs — qurilmadan kelgan xom loglar
+• attendance_records — yakuniy attendance yozuvlari
+• telegram_accounts — Telegram bilan bog‘lanish
+• notifications — yuborilgan xabarlar
+• audit_logs — tizim xavfsizligi va harakatlar tarixi
+14. Xavfsizlik talablari
+• Tizimda barcha sezgir amallar audit logga yozilishi shart.• Role-based access qat’iy bo‘lishi kerak; foydalanuvchi faqat o‘ziga tegishli ma’lumotni ko‘ra oladi.
+• Qurilmalar bilan ulanishda imkon qadar VPN, IP allowlist yoki xavfsiz tarmoq usullari qo‘llanadi.
+• Destructive actionlar (delete user from device, clear logs, emergency maintenance mode) tasdiqlash  
+bilan bajariladi.
+• Parent bot orqali faqat parentga bog‘langan o‘quvchi ma’lumotlari ko‘rinadi.
+• Tizimda emergency maintenance mode bo‘lishi mumkin, lekin u faqat superadmin va audit bilan 
+boshqariladi.
+15. Real-time va tarixiy tahlil talablari
+• Viloyat mudiri viloyat → tuman → maktab → sinf drill-down tahlilini ko‘ra olishi kerak.
+• Direktor maktab bo‘yicha attendance foizi, kechikishlar va absent statistikani ko‘ra olishi kerak.
+• Operator real vaqtga yaqin device status va sync xatolarni ko‘ra olishi kerak.
+• Tarixiy tahlil kunlik, haftalik, oylik va custom period bo‘yicha bo‘lishi kerak.
+• Barcha hisobotlar keyinchalik PDF/Excel eksportga tayyor arxitekturada yozilishi kerak.
+16. Tizimda ishlov beriladigan asosiy jarayonlar
+Jarayon Kim boshlaydi Tizim amali Natija
+Student yaratish OperatorStudent va sinf 
+bog‘lanadiStudent tizimga kiradi
+Parent phone kiritish Operator Pending link yaratiladiAuto-linkga tayyor 
+bo‘ladi
+Bot onboarding Parent Telefon tasdiqlanadiParent studentga 
+bog‘lanadi
+Device sync Operator / tizimStudent qurilmaga 
+yuboriladiFace ID terminalda user 
+yaratiladi
+Attendance event QurilmaRaw log saqlanadi va 
+qayta ishlanadiAttendanceRecord 
+yaratiladi
+Parent notification TizimTelegram xabari 
+yuboriladiOta-ona xabardor bo‘ladi
+17. Loyiha ishlab chiqish bosqichlari
+Bosqich Modul Asosiy natija
+Phase 1 Core foundationProject bootstrap, auth, roles, 
+settings, logging, Docker
+Phase 2 OrganizationViloyat, tuman, maktab, sinf 
+modeli va CRUD
+Phase 3 Students & parentsStudent/teacher/parent modullari 
+va parent auto-link
+Phase 4 Face ID devicesDevice model, adapterlar, sync, 
+face upload, log pull
+Phase 5 Attendance engineRaw logs, mapping, 
+deduplication, attendance records
+Phase 6 Bots Parent bot va management bot
+Phase 7 Dashboards & reportsRole-based analytics, filters, 
+exports
+Phase 8 Security & polishAudit, maintenance mode, alerts, 
+monitoring18. AI bilan ishlash uchun modulma-modul yondashuv
+• AI ga butun loyiha bir yo‘la berilmaydi; har safar bitta modul yoki bitta task beriladi.
+• Har task uchun aniq maqsad, cheklov, o‘zgartiriladigan fayllar va test talablari yoziladi.
+• Har bir modul tugagach render, real test va audit qilish zarur.
+• Face ID integratsiya, parent auto-link va attendance engine modullari alohida bosqichlarda yoziladi.
+19. Majburiy final qoidalar
+• Loyiha markaziy server arxitekturasida quriladi; maktablarga alohida server qo‘yilmaydi.
+• Web site, management bot va parent bot yagona backendga bog‘langan bo‘ladi.
+• Face ID qurilmalar bilan ikki tomonlama integratsiya — majburiy funksional talab.
+• Har bir attendance hodisasi va barcha tarixiy ma’lumotlar markaziy serverda saqlanadi.
+• Tizim ko‘p rol, ko‘p farzand, ko‘p maktab va ko‘p qurilma holatlarini to‘liq qo‘llab-quvvatlashi shart.
+20. Qisqa yakuniy tavsiya
+Ushbu tizim oddiy attendance ilovasi emas, balki markaziy boshqaruvga ega, Face ID integratsiyali, ko‘p 
+rolga asoslangan maktab nazorat platformasi sifatida loyihalanishi kerak. Barcha keyingi hujjatlar — 
+database schema, API ro‘yxati, task breakdown va AI promptlar — aynan shu TZ asosida ishlab 
+chiqilishi tavsiya etiladi.

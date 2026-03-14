@@ -1,0 +1,58 @@
+# Django / Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+*.egg-info/
+.installed.cfg
+.pip-internal/
+
+# Media and Static
+backend/media/
+backend/static/
+backend/staticfiles/
+media/
+static/
+
+# Database
+db.sqlite3
+*.db
+
+# Node / React
+node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+build/
+.eslintcache
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+!.env.example
+
+# Docker
+.docker-compose.yml.swp
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+.project
+.pydevproject
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+.cache/
+.pytest_cache/
+.DS_Store
