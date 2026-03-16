@@ -13,6 +13,7 @@ export const studentsAPI = {
   getTeachers: (params) => apiClient.get('/teachers/', { params }),
   createTeacher: (data) => apiClient.post('/teachers/', data),
   updateTeacher: (id, data) => apiClient.patch(`/teachers/${id}/`, data),
+  deleteTeacher: (id) => apiClient.delete(`/teachers/${id}/`),
 
   getParents: (params) => apiClient.get('/parents/', { params }),
   createParentLink: (data) => apiClient.post('/parent-links/', data),

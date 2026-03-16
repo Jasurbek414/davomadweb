@@ -12,7 +12,7 @@ from openpyxl.styles import Font, Alignment, PatternFill
 
 from .models import AttendanceRecord
 from .serializers import AttendanceRecordSerializer
-from apps.accounts.permissions import IsTeacherOrAbove, IsOperatorOrAbove
+from apps.accounts.permissions import IsTeacherOrAbove, IsOperatorOrAbove, IsTeacherOrParentOrAbove
 
 
 class AttendanceRecordViewSet(viewsets.ModelViewSet):
@@ -29,7 +29,7 @@ class AttendanceRecordViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsOperatorOrAbove()]
-        return [IsTeacherOrAbove()]
+        return [IsTeacherOrParentOrAbove()]
 
     def get_queryset(self):
         user = self.request.user

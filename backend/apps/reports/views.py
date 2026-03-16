@@ -13,11 +13,11 @@ from apps.attendance.models import AttendanceRecord
 from apps.students.models import Student
 from apps.devices.models import Device
 from apps.organizations.models import School, Region, District
-from apps.accounts.permissions import IsTeacherOrAbove, IsBotRequest
+from apps.accounts.permissions import IsTeacherOrAbove, IsBotRequest, IsAuthenticatedOrBot, IsTeacherOrParentOrAbove
 
 
 class DailyReportView(APIView):
-    permission_classes = [IsAuthenticated | IsBotRequest, IsTeacherOrAbove | IsBotRequest]
+    permission_classes = [IsTeacherOrParentOrAbove]
 
     def get(self, request):
         report_date = request.query_params.get('date', str(date.today()))
@@ -56,7 +56,7 @@ class DailyReportView(APIView):
 
 
 class WeeklyReportView(APIView):
-    permission_classes = [IsAuthenticated | IsBotRequest, IsTeacherOrAbove | IsBotRequest]
+    permission_classes = [IsTeacherOrParentOrAbove]
 
     def get(self, request):
         today = date.today()
@@ -105,7 +105,7 @@ class WeeklyReportView(APIView):
 
 
 class MonthlyReportView(APIView):
-    permission_classes = [IsAuthenticated | IsBotRequest, IsTeacherOrAbove | IsBotRequest]
+    permission_classes = [IsTeacherOrParentOrAbove]
 
     def get(self, request):
         year = int(request.query_params.get('year', date.today().year))
@@ -147,7 +147,7 @@ class MonthlyReportView(APIView):
 
 
 class StudentReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsTeacherOrParentOrAbove]
 
     def get(self, request, student_id):
         from apps.attendance.serializers import AttendanceRecordSerializer
@@ -157,14 +157,32 @@ class StudentReportView(APIView):
         except Student.DoesNotExist:
             return Response({'detail': 'O\'quvchi topilmadi'}, status=404)
 
-        # Scope check: non-superadmins can only view students in their school
+        # Scope check: non-superadmins can only view students in their scope
         if not (user.is_superuser or user.has_role('superadmin')):
-            allowed_school_ids = list(user.user_roles.filter(
-                role__name__in=['school_director', 'operator', 'teacher'],
-                is_active=True, school__isnull=False
-            ).values_list('school_id', flat=True))
-            if student.school_id not in allowed_school_ids:
-                return Response({'detail': 'Ruxsat yo\'q'}, status=403)
+            if user.has_role('parent'):
+                # Parents can only see their own children
+                try:
+                    parent = user.parent_profile
+                    linked_ids = list(parent.student_links.filter(status='active').values_list('student_id', flat=True))
+                    if student.id not in linked_ids:
+                        return Response({'detail': 'Ruxsat yo\'q'}, status=403)
+                except Exception:
+                    return Response({'detail': 'Ruxsat yo\'q'}, status=403)
+            elif user.has_role('region_director'):
+                region_ids = list(user.user_roles.filter(role__name='region_director', is_active=True).values_list('region_id', flat=True))
+                if student.school.district.region_id not in region_ids:
+                    return Response({'detail': 'Ruxsat yo\'q'}, status=403)
+            elif user.has_role('district_director'):
+                district_ids = list(user.user_roles.filter(role__name='district_director', is_active=True).values_list('district_id', flat=True))
+                if student.school.district_id not in district_ids:
+                    return Response({'detail': 'Ruxsat yo\'q'}, status=403)
+            else:
+                allowed_school_ids = list(user.user_roles.filter(
+                    role__name__in=['school_director', 'operator', 'teacher'],
+                    is_active=True, school__isnull=False
+                ).values_list('school_id', flat=True))
+                if student.school_id not in allowed_school_ids:
+                    return Response({'detail': 'Ruxsat yo\'q'}, status=403)
 
         records = AttendanceRecord.objects.filter(student=student).order_by('-date')[:30]
         stats = AttendanceRecord.objects.filter(student=student).aggregate(
@@ -189,7 +207,7 @@ class StudentReportView(APIView):
 
 
 class AnalyticsView(APIView):
-    permission_classes = [IsAuthenticated | IsBotRequest, IsTeacherOrAbove | IsBotRequest]
+    permission_classes = [IsTeacherOrParentOrAbove]
 
     def _date_range(self, period, date_from, date_to):
         today = date.today()
@@ -241,6 +259,13 @@ class AnalyticsView(APIView):
             elif user.has_role('district_director'):
                 dids = user.user_roles.filter(role__name='district_director', is_active=True).values_list('district_id', flat=True)
                 base = base.filter(student__school__district_id__in=dids)
+            elif user.has_role('parent'):
+                try:
+                    parent = user.parent_profile
+                    student_ids = parent.student_links.filter(status='active').values_list('student_id', flat=True)
+                    base = base.filter(student_id__in=student_ids)
+                except Exception:
+                    base = base.none()
             else:
                 sids = user.user_roles.filter(
                     role__name__in=['school_director', 'operator', 'teacher'],
@@ -327,6 +352,14 @@ class OverviewView(APIView):
         elif user.has_role('district_director'):
             district_ids = user.user_roles.filter(role__name='district_director', is_active=True).values_list('district_id', flat=True)
             schools = School.objects.filter(district_id__in=district_ids, is_active=True)
+        elif user.has_role('parent'):
+            try:
+                parent = user.parent_profile
+                student_ids = parent.student_links.filter(status='active').values_list('student_id', flat=True)
+                child_school_ids = Student.objects.filter(id__in=student_ids).values_list('school_id', flat=True)
+                schools = School.objects.filter(id__in=child_school_ids, is_active=True)
+            except Exception:
+                schools = School.objects.none()
         else:
             school_ids = user.user_roles.filter(
                 role__name__in=['school_director', 'operator', 'teacher'],

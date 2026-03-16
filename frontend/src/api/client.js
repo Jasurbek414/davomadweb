@@ -26,7 +26,11 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Login va refresh endpointlarini interceptordan o'tkazmaymiz
+    const isAuthEndpoint = originalRequest.url?.includes('/auth/login/') ||
+                           originalRequest.url?.includes('/auth/refresh/')
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true
       const refreshToken = localStorage.getItem('refresh_token')
 
@@ -44,6 +48,8 @@ apiClient.interceptors.response.use(
           window.location.href = '/login'
         }
       } else {
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('refresh_token')
         window.location.href = '/login'
       }
     }

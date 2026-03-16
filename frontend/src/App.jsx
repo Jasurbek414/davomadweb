@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchMe } from './store/authSlice'
 import { AppLayout } from './components/layout/AppLayout'
+import { usePermissions } from './hooks/usePermissions'
 import LoginPage from './pages/auth/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import StudentsPage from './pages/operator/StudentsPage'
@@ -17,6 +18,7 @@ import TelegramPage from './pages/common/TelegramPage'
 import OrganizationsPage from './pages/admin/OrganizationsPage'
 import UsersPage from './pages/admin/UsersPage'
 import AuditPage from './pages/admin/AuditPage'
+import MyChildrenPage from './pages/parent/MyChildrenPage'
 
 function PrivateRoute({ children }) {
   const { isAuthenticated } = useSelector(state => state.auth)
@@ -26,6 +28,13 @@ function PrivateRoute({ children }) {
 function PublicRoute({ children }) {
   const { isAuthenticated } = useSelector(state => state.auth)
   return isAuthenticated ? <Navigate to="/dashboard" replace /> : children
+}
+
+/* Rol-asosli himoya: ruxsatli rollar ro'yxati */
+function RoleRoute({ children, roles }) {
+  const { primaryRole, isSuperAdmin } = usePermissions()
+  if (isSuperAdmin || roles.includes(primaryRole)) return children
+  return <Navigate to="/dashboard" replace />
 }
 
 export default function App() {
@@ -42,25 +51,89 @@ export default function App() {
       <Route path="/" element={<PrivateRoute><AppLayout /></PrivateRoute>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
-        {/* Admin */}
-        <Route path="users" element={<UsersPage />} />
-        <Route path="regions" element={<OrganizationsPage />} />
-        <Route path="schools" element={<OrganizationsPage />} />
-        <Route path="districts" element={<OrganizationsPage />} />
-        <Route path="organizations" element={<OrganizationsPage />} />
-        <Route path="audit" element={<AuditPage />} />
-        {/* Operator / teacher */}
-        <Route path="students" element={<StudentsPage />} />
-        <Route path="teachers" element={<TeachersPage />} />
-        <Route path="parents" element={<ParentsPage />} />
-        <Route path="classes" element={<OrganizationsPage />} />
-        <Route path="devices" element={<DevicesPage />} />
-        {/* Parent */}
-        <Route path="my-children" element={<AttendancePage />} />
-        {/* Attendance & reports */}
+
+        {/* ─── Superadmin only ─── */}
+        <Route path="users" element={
+          <RoleRoute roles={['superadmin']}>
+            <UsersPage />
+          </RoleRoute>
+        } />
+        <Route path="audit" element={
+          <RoleRoute roles={['superadmin']}>
+            <AuditPage />
+          </RoleRoute>
+        } />
+
+        {/* ─── Tashkilotlar: superadmin + region/district director ─── */}
+        <Route path="regions" element={
+          <RoleRoute roles={['superadmin', 'region_director', 'district_director']}>
+            <OrganizationsPage />
+          </RoleRoute>
+        } />
+        <Route path="districts" element={
+          <RoleRoute roles={['superadmin', 'region_director', 'district_director']}>
+            <OrganizationsPage />
+          </RoleRoute>
+        } />
+        <Route path="schools" element={
+          <RoleRoute roles={['superadmin', 'region_director', 'district_director']}>
+            <OrganizationsPage />
+          </RoleRoute>
+        } />
+
+        {/* ─── Sinflar: superadmin, director va operator ─── */}
+        <Route path="classes" element={
+          <RoleRoute roles={['superadmin', 'region_director', 'district_director', 'school_director', 'operator']}>
+            <OrganizationsPage />
+          </RoleRoute>
+        } />
+
+        {/* ─── O'quvchilar: superadmin, directorlar, operator, o'qituvchi ─── */}
+        <Route path="students" element={
+          <RoleRoute roles={['superadmin', 'region_director', 'district_director', 'school_director', 'operator', 'teacher']}>
+            <StudentsPage />
+          </RoleRoute>
+        } />
+
+        {/* ─── O'qituvchilar: superadmin, directorlar, operator ─── */}
+        <Route path="teachers" element={
+          <RoleRoute roles={['superadmin', 'region_director', 'district_director', 'school_director', 'operator']}>
+            <TeachersPage />
+          </RoleRoute>
+        } />
+
+        {/* ─── Ota-onalar: superadmin, school_director, operator ─── */}
+        <Route path="parents" element={
+          <RoleRoute roles={['superadmin', 'school_director', 'operator']}>
+            <ParentsPage />
+          </RoleRoute>
+        } />
+
+        {/* ─── Qurilmalar: superadmin, directorlar, operator ─── */}
+        <Route path="devices" element={
+          <RoleRoute roles={['superadmin', 'region_director', 'district_director', 'school_director', 'operator']}>
+            <DevicesPage />
+          </RoleRoute>
+        } />
+
+        {/* ─── Davomad: barcha autentifikatsiyalangan ─── */}
         <Route path="attendance" element={<AttendancePage />} />
-        <Route path="reports" element={<ReportsPage />} />
-        {/* Common */}
+
+        {/* ─── Hisobotlar: superadmin, directorlar, operator, o'qituvchi ─── */}
+        <Route path="reports" element={
+          <RoleRoute roles={['superadmin', 'region_director', 'district_director', 'school_director', 'operator', 'teacher']}>
+            <ReportsPage />
+          </RoleRoute>
+        } />
+
+        {/* ─── Ota-ona sahifasi ─── */}
+        <Route path="my-children" element={
+          <RoleRoute roles={['parent']}>
+            <MyChildrenPage />
+          </RoleRoute>
+        } />
+
+        {/* ─── Umumiy ─── */}
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="telegram" element={<TelegramPage />} />

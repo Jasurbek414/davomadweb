@@ -65,9 +65,29 @@ class IsParent(BasePermission):
         return request.user.is_authenticated and request.user.has_role('parent')
 
 
+class IsTeacherOrParentOrAbove(BasePermission):
+    """O'qituvchi, ota-ona va yuqori lavozimlar (read-only uchun)"""
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        return any(request.user.has_role(r) for r in [
+            'superadmin', 'region_director', 'district_director',
+            'school_director', 'operator', 'teacher', 'parent'
+        ]) or request.user.is_superuser
+
+
 class IsBotRequest(BasePermission):
     """Telegram bot uchun maxsus ruxsat"""
     def has_permission(self, request, view):
         from django.conf import settings
         bot_secret = request.headers.get('X-Bot-Secret', '')
         return bot_secret == settings.BOT_SECRET
+
+
+class IsAuthenticatedOrBot(BasePermission):
+    """Autentifikatsiyalangan foydalanuvchi YOKI bot"""
+    def has_permission(self, request, view):
+        from django.conf import settings
+        if request.headers.get('X-Bot-Secret', '') == settings.BOT_SECRET:
+            return True
+        return bool(request.user and request.user.is_authenticated)

@@ -527,7 +527,7 @@ export default function StudentsPage() {
           variant="danger"
           loading={deleting}
           onConfirm={handleDelete}
-          onCancel={() => setDeleteStudent(null)}
+          onClose={() => setDeleteStudent(null)}
         />
       )}
     </div>

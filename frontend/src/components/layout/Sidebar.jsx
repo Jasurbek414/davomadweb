@@ -22,7 +22,10 @@ const navGroups = {
       label: 'Boshqaruv',
       items: [
         { label: 'Foydalanuvchilar', path: '/users', icon: Users },
-        { label: 'Tashkilotlar', path: '/regions', icon: Building2 },
+        { label: 'Viloyatlar', path: '/regions', icon: MapPin },
+        { label: 'Tumanlar', path: '/districts', icon: Building2 },
+        { label: 'Maktablar', path: '/schools', icon: School },
+        { label: 'Sinflar', path: '/classes', icon: BookOpen },
         { label: 'Audit loglari', path: '/audit', icon: ShieldCheck },
       ]
     },
@@ -32,7 +35,6 @@ const navGroups = {
         { label: "O'quvchilar", path: '/students', icon: GraduationCap },
         { label: "O'qituvchilar", path: '/teachers', icon: UserSquare },
         { label: 'Ota-onalar', path: '/parents', icon: Users },
-        { label: 'Sinflar', path: '/classes', icon: BookOpen },
       ]
     },
     {
@@ -55,7 +57,12 @@ const navGroups = {
       label: 'Asosiy',
       items: [
         { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-        { label: 'Tashkilotlar', path: '/regions', icon: MapPin },
+      ]
+    },
+    {
+      label: 'Tashkilotlar',
+      items: [
+        { label: 'Tumanlar', path: '/districts', icon: Building2 },
         { label: 'Maktablar', path: '/schools', icon: School },
       ]
     },
@@ -73,7 +80,20 @@ const navGroups = {
       label: 'Asosiy',
       items: [
         { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-        { label: 'Tashkilotlar', path: '/regions', icon: Building2 },
+      ]
+    },
+    {
+      label: 'Tashkilotlar',
+      items: [
+        { label: 'Maktablar', path: '/schools', icon: School },
+        { label: 'Sinflar', path: '/classes', icon: BookOpen },
+      ]
+    },
+    {
+      label: 'Ta\'lim',
+      items: [
+        { label: "O'quvchilar", path: '/students', icon: GraduationCap },
+        { label: "O'qituvchilar", path: '/teachers', icon: UserSquare },
       ]
     },
     {
@@ -93,10 +113,12 @@ const navGroups = {
       ]
     },
     {
-      label: 'Ta\'lim',
+      label: 'Maktab',
       items: [
         { label: "O'quvchilar", path: '/students', icon: GraduationCap },
+        { label: "O'qituvchilar", path: '/teachers', icon: UserSquare },
         { label: 'Sinflar', path: '/classes', icon: BookOpen },
+        { label: 'Ota-onalar', path: '/parents', icon: Users },
       ]
     },
     {
@@ -140,6 +162,7 @@ const navGroups = {
       label: 'Tahlil',
       items: [
         { label: 'Davomad', path: '/attendance', icon: ClipboardList },
+        { label: 'Hisobotlar', path: '/reports', icon: BarChart3 },
         { label: 'Telegram Bot', path: '/telegram', icon: MessageCircle },
       ]
     },
@@ -149,6 +172,12 @@ const navGroups = {
       label: 'Asosiy',
       items: [
         { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+      ]
+    },
+    {
+      label: 'Ta\'lim',
+      items: [
+        { label: "O'quvchilar", path: '/students', icon: GraduationCap },
         { label: 'Sinf jadvali', path: '/classes', icon: BookOpen },
       ]
     },
@@ -163,10 +192,15 @@ const navGroups = {
   ],
   parent: [
     {
-      label: 'Asosiy',
+      label: 'Mening bolalarim',
       items: [
         { label: 'Bolalarim', path: '/my-children', icon: Home },
         { label: 'Davomad tarixi', path: '/attendance', icon: ClipboardList },
+      ]
+    },
+    {
+      label: 'Boshqa',
+      items: [
         { label: 'Telegram Bot', path: '/telegram', icon: MessageCircle },
       ]
     },

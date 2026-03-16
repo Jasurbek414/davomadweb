@@ -11,7 +11,7 @@ from .serializers import (
     DeviceSerializer, DeviceCreateSerializer,
     DeviceSyncLogSerializer, DeviceRawLogSerializer
 )
-from apps.accounts.permissions import IsOperatorOrAbove, IsSchoolDirectorOrAbove, IsBotRequest
+from apps.accounts.permissions import IsOperatorOrAbove, IsSchoolDirectorOrAbove, IsBotRequest, IsAuthenticatedOrBot
 
 
 class DeviceViewSet(viewsets.ModelViewSet):
@@ -28,7 +28,7 @@ class DeviceViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsOperatorOrAbove()]
-        return [IsAuthenticated() | IsBotRequest()]
+        return [IsAuthenticatedOrBot()]
 
     def get_queryset(self):
         user = self.request.user
@@ -41,6 +41,9 @@ class DeviceViewSet(viewsets.ModelViewSet):
         if user.has_role('region_director'):
             region_ids = user.user_roles.filter(role__name='region_director', is_active=True).values_list('region_id', flat=True)
             return qs.filter(school__district__region_id__in=region_ids)
+        if user.has_role('district_director'):
+            district_ids = user.user_roles.filter(role__name='district_director', is_active=True).values_list('district_id', flat=True)
+            return qs.filter(school__district_id__in=district_ids)
         school_ids = user.user_roles.filter(
             role__name__in=['school_director', 'operator', 'teacher'],
             is_active=True, school__isnull=False

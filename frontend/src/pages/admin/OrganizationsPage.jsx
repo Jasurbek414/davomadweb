@@ -145,7 +145,10 @@ function RegionsTab() {
       modal.mode === 'add' ? await orgAPI.createRegion(form) : await orgAPI.updateRegion(modal.data.id, form)
       toast.success(modal.mode === 'add' ? "Viloyat qo'shildi" : 'Viloyat yangilandi')
       setModal(null); load()
-    } catch (e) { toast.error(e.response?.data?.name?.[0] || 'Xatolik') } finally { setSaving(false) }
+    } catch (e) {
+      const err = e.response?.data
+      toast.error(err?.name?.[0] || err?.detail || Object.values(err || {}).flat()[0] || 'Xatolik')
+    } finally { setSaving(false) }
   }
 
   const handleDelete = async () => {
@@ -212,7 +215,10 @@ function DistrictsTab() {
       modal.mode === 'add' ? await orgAPI.createDistrict(form) : await orgAPI.updateDistrict(modal.data.id, form)
       toast.success(modal.mode === 'add' ? "Tuman qo'shildi" : 'Tuman yangilandi')
       setModal(null); load()
-    } catch (e) { toast.error(e.response?.data?.name?.[0] || 'Xatolik') } finally { setSaving(false) }
+    } catch (e) {
+      const err = e.response?.data
+      toast.error(err?.name?.[0] || err?.detail || Object.values(err || {}).flat()[0] || 'Xatolik')
+    } finally { setSaving(false) }
   }
 
   const getRegionName = (id) => regions.find(r => r.id === id)?.name || '—'
@@ -287,7 +293,10 @@ function SchoolsTab() {
       modal.mode === 'add' ? await orgAPI.createSchool(p) : await orgAPI.updateSchool(modal.data.id, p)
       toast.success(modal.mode === 'add' ? "Maktab qo'shildi" : 'Maktab yangilandi')
       setModal(null); load()
-    } catch (e) { toast.error(e.response?.data?.name?.[0] || 'Xatolik') } finally { setSaving(false) }
+    } catch (e) {
+      const err = e.response?.data
+      toast.error(err?.name?.[0] || err?.detail || Object.values(err || {}).flat()[0] || 'Xatolik')
+    } finally { setSaving(false) }
   }
 
   const getDistrictName = (id) => districts.find(d => d.id === id)?.name || '—'
@@ -367,7 +376,10 @@ function ClassesTab() {
       modal.mode === 'add' ? await orgAPI.createClass(p) : await orgAPI.updateClass(modal.data.id, p)
       toast.success(modal.mode === 'add' ? "Sinf qo'shildi" : 'Sinf yangilandi')
       setModal(null); load()
-    } catch (e) { toast.error(Object.values(e.response?.data || {}).flat()[0] || 'Xatolik') } finally { setSaving(false) }
+    } catch (e) {
+      const err = e.response?.data
+      toast.error(err?.detail || Object.values(err || {}).flat()[0] || 'Xatolik')
+    } finally { setSaving(false) }
   }
 
   const getSchoolName = (id) => schools.find(s => s.id === id)?.name || '—'

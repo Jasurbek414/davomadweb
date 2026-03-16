@@ -12,7 +12,7 @@ from .serializers import (
     TeacherSerializer, ParentSerializer,
     ParentStudentLinkSerializer, ParentStudentLinkCreateSerializer
 )
-from apps.accounts.permissions import IsOperatorOrAbove, IsTeacherOrAbove
+from apps.accounts.permissions import IsOperatorOrAbove, IsTeacherOrAbove, IsTeacherOrParentOrAbove
 
 
 class StudentViewSet(viewsets.ModelViewSet):
@@ -30,9 +30,9 @@ class StudentViewSet(viewsets.ModelViewSet):
         return StudentListSerializer
 
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+        if self.action in ['create', 'update', 'partial_update', 'destroy', 'upload_photo', 'push_face']:
             return [IsOperatorOrAbove()]
-        return [IsTeacherOrAbove()]
+        return [IsTeacherOrParentOrAbove()]
 
     def get_queryset(self):
         user = self.request.user
@@ -45,6 +45,13 @@ class StudentViewSet(viewsets.ModelViewSet):
         if user.has_role('district_director'):
             district_ids = user.user_roles.filter(role__name='district_director', is_active=True).values_list('district_id', flat=True)
             return qs.filter(school__district_id__in=district_ids)
+        if user.has_role('parent'):
+            try:
+                parent = user.parent_profile
+                student_ids = parent.student_links.filter(status='active').values_list('student_id', flat=True)
+                return qs.filter(id__in=student_ids)
+            except Exception:
+                return qs.none()
         school_ids = user.user_roles.filter(
             role__name__in=['school_director', 'operator', 'teacher'],
             is_active=True, school__isnull=False
@@ -109,6 +116,29 @@ class TeacherViewSet(viewsets.ModelViewSet):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsOperatorOrAbove()]
         return [IsTeacherOrAbove()]
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = super().get_queryset()
+        if user.is_superuser or user.has_role('superadmin'):
+            return qs
+        if user.has_role('region_director'):
+            region_ids = user.user_roles.filter(
+                role__name='region_director', is_active=True
+            ).values_list('region_id', flat=True)
+            return qs.filter(school__district__region_id__in=region_ids)
+        if user.has_role('district_director'):
+            district_ids = user.user_roles.filter(
+                role__name='district_director', is_active=True
+            ).values_list('district_id', flat=True)
+            return qs.filter(school__district_id__in=district_ids)
+        school_ids = user.user_roles.filter(
+            role__name__in=['school_director', 'operator', 'teacher'],
+            is_active=True, school__isnull=False
+        ).values_list('school_id', flat=True)
+        if school_ids:
+            return qs.filter(school_id__in=school_ids)
+        return qs.none()
 
 
 class ParentViewSet(viewsets.ModelViewSet):

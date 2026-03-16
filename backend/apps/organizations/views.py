@@ -89,11 +89,20 @@ class ClassViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         if user.is_superuser or user.has_role('superadmin'):
             return qs
-        # Filter by school access
+        if user.has_role('region_director'):
+            region_ids = user.user_roles.filter(
+                role__name='region_director', is_active=True
+            ).values_list('region_id', flat=True)
+            return qs.filter(school__district__region_id__in=region_ids)
+        if user.has_role('district_director'):
+            district_ids = user.user_roles.filter(
+                role__name='district_director', is_active=True
+            ).values_list('district_id', flat=True)
+            return qs.filter(school__district_id__in=district_ids)
         school_ids = user.user_roles.filter(
             role__name__in=['school_director', 'operator', 'teacher'],
             is_active=True, school__isnull=False
         ).values_list('school_id', flat=True)
         if school_ids:
             return qs.filter(school_id__in=school_ids)
-        return qs
+        return qs.none()

@@ -21,7 +21,7 @@ class UserListSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'phone', 'email', 'first_name', 'last_name', 'middle_name',
-                  'full_name', 'is_active', 'roles', 'created_at']
+                  'full_name', 'is_active', 'is_superuser', 'roles', 'last_login', 'created_at']
 
     def get_roles(self, obj):
         return [{'role': ur.role.name, 'role_display': ur.role.get_name_display()} for ur in obj.get_roles()]
@@ -34,8 +34,9 @@ class UserDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'phone', 'email', 'first_name', 'last_name', 'middle_name',
-                  'full_name', 'is_active', 'is_staff', 'roles', 'date_joined', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'is_staff', 'date_joined', 'created_at', 'updated_at']
+                  'full_name', 'is_active', 'is_staff', 'is_superuser',
+                  'roles', 'last_login', 'date_joined', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'is_staff', 'is_superuser', 'last_login', 'date_joined', 'created_at', 'updated_at']
 
     def get_roles(self, obj):
         roles = []
@@ -96,12 +97,25 @@ class RoleSerializer(serializers.ModelSerializer):
 class UserRoleSerializer(serializers.ModelSerializer):
     role_name = serializers.CharField(source='role.name', read_only=True)
     role_display = serializers.CharField(source='role.get_name_display', read_only=True)
+    region_name = serializers.SerializerMethodField()
+    district_name = serializers.SerializerMethodField()
+    school_name = serializers.SerializerMethodField()
 
     class Meta:
         model = UserRole
         fields = ['id', 'user', 'role', 'role_name', 'role_display',
-                  'region', 'district', 'school', 'is_active', 'assigned_at']
+                  'region', 'region_name', 'district', 'district_name',
+                  'school', 'school_name', 'is_active', 'assigned_at']
         read_only_fields = ['id', 'assigned_at']
+
+    def get_region_name(self, obj):
+        return obj.region.name if obj.region else None
+
+    def get_district_name(self, obj):
+        return obj.district.name if obj.district else None
+
+    def get_school_name(self, obj):
+        return obj.school.name if obj.school else None
 
 
 class UserRoleCreateSerializer(serializers.ModelSerializer):
@@ -115,6 +129,24 @@ class UserRoleCreateSerializer(serializers.ModelSerializer):
         request = self.context['request']
         validated_data['assigned_by'] = request.user
         return super().create(validated_data)
+
+
+class AdminSetPasswordSerializer(serializers.Serializer):
+    """Superadmin tomonidan istalgan foydalanuvchi parolini o'zgartirish"""
+    new_password = serializers.CharField(required=True, min_length=8)
+    new_password_confirm = serializers.CharField(required=True)
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['new_password_confirm']:
+            raise serializers.ValidationError({'new_password_confirm': "Parollar mos kelmadi"})
+        return attrs
+
+
+class AdminUpdateUserSerializer(serializers.ModelSerializer):
+    """Superadmin tomonidan foydalanuvchi ma'lumotlarini to'liq tahrirlash"""
+    class Meta:
+        model = User
+        fields = ['phone', 'email', 'first_name', 'last_name', 'middle_name', 'is_active']
 
 
 class AuditLogSerializer(serializers.ModelSerializer):
