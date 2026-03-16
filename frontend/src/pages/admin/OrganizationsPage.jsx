@@ -1,86 +1,71 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, Pencil, Trash2, ChevronRight, MapPin, Building2, School, BookOpen, Search, X, ChevronDown } from 'lucide-react'
-import { Card } from '../../components/ui/Card'
+import { useLocation } from 'react-router-dom'
+import { Plus, Pencil, Trash2, MapPin, Building2, School, BookOpen, Search } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
-import { Modal } from '../../components/ui/Modal'
-import { Input } from '../../components/ui/Input'
-import { LoadingSpinner, EmptyState } from '../../components/ui/LoadingSpinner'
+import { Modal, ConfirmModal } from '../../components/ui/Modal'
+import { Input, Select } from '../../components/ui/Input'
+import { TableSkeleton, EmptyState } from '../../components/ui/LoadingSpinner'
 import { orgAPI } from '../../api/organizations'
 import { studentsAPI } from '../../api/students'
 import toast from 'react-hot-toast'
 
-// ─── Tabs ────────────────────────────────────────────────────────────────────
 const TABS = [
-  { id: 'regions', label: 'Viloyatlar', icon: MapPin, color: 'text-violet-600 bg-violet-50' },
-  { id: 'districts', label: 'Tumanlar', icon: Building2, color: 'text-blue-600 bg-blue-50' },
-  { id: 'schools', label: 'Maktablar', icon: School, color: 'text-emerald-600 bg-emerald-50' },
-  { id: 'classes', label: 'Sinflar', icon: BookOpen, color: 'text-amber-600 bg-amber-50' },
+  { id: 'regions',   label: 'Viloyatlar', icon: MapPin,    color: '#7C3AED' },
+  { id: 'districts', label: 'Tumanlar',   icon: Building2, color: '#2563EB' },
+  { id: 'schools',   label: 'Maktablar',  icon: School,    color: '#059669' },
+  { id: 'classes',   label: 'Sinflar',    icon: BookOpen,  color: '#D97706' },
 ]
 
-// ─── Reusable form field ──────────────────────────────────────────────────────
-function Field({ label, error, children }) {
+/* ── Generic Table ── */
+function OrgTable({ cols, rows, loading, onEdit, onDelete, empty }) {
+  if (loading) return <TableSkeleton rows={6} cols={cols.length + 1} />
+  if (!rows.length) return <EmptyState icon={Plus} title={empty} description="Qo'shish uchun + tugmasini bosing" />
   return (
-    <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1.5">{label}</label>
-      {children}
-      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-    </div>
-  )
-}
-
-function SelectField({ label, value, onChange, options, placeholder, error }) {
-  return (
-    <Field label={label} error={error}>
-      <div className="relative">
-        <select
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          className="w-full px-3 py-2 pr-8 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white appearance-none"
-        >
-          <option value="">{placeholder}</option>
-          {options.map(o => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-      </div>
-    </Field>
-  )
-}
-
-// ─── Generic table ────────────────────────────────────────────────────────────
-function DataTable({ columns, rows, onEdit, onDelete, loading, emptyText }) {
-  if (loading) return <LoadingSpinner />
-  if (!rows.length) return <EmptyState title={emptyText} description="Qo'shish uchun + tugmasini bosing" />
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
-          <tr className="bg-slate-50 border-b border-slate-100">
-            {columns.map(c => (
-              <th key={c.key} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{c.label}</th>
+          <tr style={{ background: '#F8FAFC' }}>
+            {cols.map(c => (
+              <th key={c.key} style={{
+                padding: '10px 16px', textAlign: 'left',
+                fontSize: 11, fontWeight: 700, color: '#94A3B8',
+                textTransform: 'uppercase', letterSpacing: '0.06em',
+                borderBottom: '1px solid #E2E8F0', whiteSpace: 'nowrap',
+              }}>{c.label}</th>
             ))}
-            <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Amallar</th>
+            <th style={{ padding: '10px 16px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid #E2E8F0', whiteSpace: 'nowrap' }}>
+              Amallar
+            </th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-50">
+        <tbody>
           {rows.map((row, i) => (
-            <tr key={row.id || i} className="hover:bg-slate-50 transition-colors">
-              {columns.map(c => (
-                <td key={c.key} className="px-4 py-3 text-slate-700">
+            <tr key={row.id || i}
+              style={{ borderBottom: i < rows.length - 1 ? '1px solid #F8FAFC' : 'none', transition: 'background 0.1s' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#FAFBFF'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              {cols.map(c => (
+                <td key={c.key} style={{ padding: '12px 16px', fontSize: 13.5, color: '#475569', verticalAlign: 'middle' }}>
                   {c.render ? c.render(row) : row[c.key] ?? '—'}
                 </td>
               ))}
-              <td className="px-4 py-3 text-right">
-                <div className="flex items-center justify-end gap-1">
-                  <button onClick={() => onEdit(row)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors">
-                    <Pencil className="w-4 h-4" />
+              <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                  <button onClick={() => onEdit(row)} title="Tahrirlash"
+                    style={tblBtnStyle}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#EEF2FF'; e.currentTarget.style.color = '#4F46E5'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#94A3B8'; }}
+                  >
+                    <Pencil style={{ width: 14, height: 14 }} />
                   </button>
                   {onDelete && (
-                    <button onClick={() => onDelete(row)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors">
-                      <Trash2 className="w-4 h-4" />
+                    <button onClick={() => onDelete(row)} title="O'chirish"
+                      style={tblBtnStyle}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = '#EF4444'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#94A3B8'; }}
+                    >
+                      <Trash2 style={{ width: 14, height: 14 }} />
                     </button>
                   )}
                 </div>
@@ -93,92 +78,112 @@ function DataTable({ columns, rows, onEdit, onDelete, loading, emptyText }) {
   )
 }
 
-// ─── REGIONS ─────────────────────────────────────────────────────────────────
+const tblBtnStyle = {
+  width: 30, height: 30, borderRadius: 7, background: 'transparent',
+  border: 'none', cursor: 'pointer', display: 'inline-flex',
+  alignItems: 'center', justifyContent: 'center', color: '#94A3B8',
+  transition: 'all 0.15s',
+}
+
+function FilterBar({ children }) {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+      {children}
+    </div>
+  )
+}
+
+function SearchInput({ value, onChange, placeholder = 'Qidirish...' }) {
+  return (
+    <div style={{ position: 'relative', flex: 1, minWidth: 200, maxWidth: 320 }}>
+      <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: '#94A3B8' }} />
+      <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+        style={{
+          width: '100%', padding: '7px 12px 7px 32px',
+          border: '1.5px solid #E2E8F0', borderRadius: 9,
+          fontSize: 13, outline: 'none', background: '#F8FAFC',
+          transition: 'all 0.15s', fontFamily: 'inherit',
+        }}
+        onFocus={e => { e.target.style.borderColor = '#4F46E5'; e.target.style.background = 'white'; e.target.style.boxShadow = '0 0 0 3px rgba(79,70,229,0.15)'; }}
+        onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.background = '#F8FAFC'; e.target.style.boxShadow = 'none'; }}
+      />
+    </div>
+  )
+}
+
+function CountChip({ value, color }) {
+  return (
+    <span style={{ fontSize: 13, fontWeight: 700, color, background: color + '15', padding: '2px 8px', borderRadius: 5 }}>
+      {value ?? 0}
+    </span>
+  )
+}
+
+/* ── REGIONS ── */
 function RegionsTab() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [modal, setModal] = useState(null) // null | { mode: 'add'|'edit', data? }
+  const [modal, setModal] = useState(null)
+  const [confirm, setConfirm] = useState(null)
   const [form, setForm] = useState({ name: '', code: '' })
   const [saving, setSaving] = useState(false)
 
   const load = useCallback(() => {
     setLoading(true)
-    orgAPI.getRegions({ search, page_size: 100 })
-      .then(r => setItems(r.data.results || []))
-      .finally(() => setLoading(false))
+    orgAPI.getRegions({ search, page_size: 100 }).then(r => setItems(r.data.results || [])).finally(() => setLoading(false))
   }, [search])
-
   useEffect(() => { load() }, [load])
 
-  const openAdd = () => { setForm({ name: '', code: '' }); setModal({ mode: 'add' }) }
-  const openEdit = (row) => { setForm({ name: row.name, code: row.code || '' }); setModal({ mode: 'edit', data: row }) }
+  const openAdd  = () => { setForm({ name: '', code: '' }); setModal({ mode: 'add' }) }
+  const openEdit = (r) => { setForm({ name: r.name, code: r.code || '' }); setModal({ mode: 'edit', data: r }) }
 
   const handleSave = async () => {
     if (!form.name.trim()) return toast.error('Viloyat nomini kiriting')
     setSaving(true)
     try {
-      if (modal.mode === 'add') {
-        await orgAPI.createRegion(form)
-        toast.success('Viloyat qo\'shildi')
-      } else {
-        await orgAPI.updateRegion(modal.data.id, form)
-        toast.success('Viloyat yangilandi')
-      }
+      modal.mode === 'add' ? await orgAPI.createRegion(form) : await orgAPI.updateRegion(modal.data.id, form)
+      toast.success(modal.mode === 'add' ? "Viloyat qo'shildi" : 'Viloyat yangilandi')
       setModal(null); load()
-    } catch (e) {
-      toast.error(e.response?.data?.name?.[0] || 'Xatolik yuz berdi')
-    } finally { setSaving(false) }
+    } catch (e) { toast.error(e.response?.data?.name?.[0] || 'Xatolik') } finally { setSaving(false) }
   }
 
-  const handleDelete = async (row) => {
-    if (!confirm(`"${row.name}" viloyatini o'chirasizmi?`)) return
-    try {
-      await orgAPI.deleteRegion(row.id)
-      toast.success('O\'chirildi'); load()
-    } catch { toast.error('O\'chirib bo\'lmadi — bog\'liq ma\'lumotlar bor') }
+  const handleDelete = async () => {
+    try { await orgAPI.deleteRegion(confirm.id); toast.success("O'chirildi"); load() }
+    catch { toast.error("O'chirib bo'lmadi — bog'liq ma'lumotlar bor") }
+    finally { setConfirm(null) }
   }
-
-  const cols = [
-    { key: 'name', label: 'Viloyat nomi' },
-    { key: 'code', label: 'Kod' },
-    { key: 'districts_count', label: 'Tumanlar', render: r => <span className="font-semibold text-blue-600">{r.districts_count ?? 0}</span> },
-    { key: 'schools_count', label: 'Maktablar', render: r => <span className="font-semibold text-emerald-600">{r.schools_count ?? 0}</span> },
-    { key: 'students_count', label: "O'quvchilar", render: r => <span className="font-semibold text-violet-600">{r.students_count ?? 0}</span> },
-  ]
 
   return (
     <>
-      <div className="flex items-center gap-3 mb-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Qidirish..."
-            className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
-        </div>
-        <Button onClick={openAdd}><Plus className="w-4 h-4 mr-1" />Viloyat qo'shish</Button>
-      </div>
-      <DataTable columns={cols} rows={items} loading={loading} onEdit={openEdit} onDelete={handleDelete} emptyText="Viloyatlar yo'q" />
-
-      <Modal isOpen={!!modal} onClose={() => setModal(null)}
-        title={modal?.mode === 'add' ? 'Yangi viloyat' : 'Viloyatni tahrirlash'}>
-        <div className="space-y-4">
-          <Field label="Viloyat nomi *">
-            <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Masalan: Toshkent viloyati" />
-          </Field>
-          <Field label="Kod (ixtiyoriy)">
-            <Input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} placeholder="TSH" />
-          </Field>
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="secondary" onClick={() => setModal(null)}>Bekor qilish</Button>
-            <Button onClick={handleSave} disabled={saving}>{saving ? 'Saqlanmoqda...' : 'Saqlash'}</Button>
-          </div>
+      <FilterBar>
+        <SearchInput value={search} onChange={setSearch} placeholder="Viloyat qidirish..." />
+        <Button icon={Plus} onClick={openAdd}>Viloyat qo'shish</Button>
+        <span style={{ marginLeft: 'auto', fontSize: 12.5, color: '#94A3B8' }}>{items.length} ta viloyat</span>
+      </FilterBar>
+      <OrgTable loading={loading} rows={items} empty="Viloyatlar yo'q" onEdit={openEdit} onDelete={r => setConfirm(r)}
+        cols={[
+          { key: 'name', label: 'Viloyat nomi', render: r => <span style={{ fontWeight: 600, color: '#0F172A' }}>{r.name}</span> },
+          { key: 'code', label: 'Kod' },
+          { key: 'districts_count', label: 'Tumanlar',     render: r => <CountChip value={r.districts_count} color="#2563EB" /> },
+          { key: 'schools_count',   label: 'Maktablar',    render: r => <CountChip value={r.schools_count}   color="#059669" /> },
+          { key: 'students_count',  label: "O'quvchilar",  render: r => <CountChip value={r.students_count}  color="#7C3AED" /> },
+        ]}
+      />
+      <Modal isOpen={!!modal} onClose={() => setModal(null)} title={modal?.mode === 'add' ? 'Yangi viloyat' : 'Viloyatni tahrirlash'}
+        footer={<><Button variant="secondary" onClick={() => setModal(null)}>Bekor qilish</Button><Button onClick={handleSave} loading={saving}>Saqlash</Button></>}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Input label="Viloyat nomi" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Toshkent viloyati" />
+          <Input label="Kod" value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} placeholder="TSH" hint="Ixtiyoriy: qisqa kod" />
         </div>
       </Modal>
+      <ConfirmModal isOpen={!!confirm} onClose={() => setConfirm(null)} onConfirm={handleDelete} danger
+        title="Viloyatni o'chirish" message={`"${confirm?.name}" viloyatini o'chirasizmi? Bu amalni qaytarib bo'lmaydi.`} confirmLabel="O'chirish" />
     </>
   )
 }
 
-// ─── DISTRICTS ────────────────────────────────────────────────────────────────
+/* ── DISTRICTS ── */
 function DistrictsTab() {
   const [items, setItems] = useState([])
   const [regions, setRegions] = useState([])
@@ -186,386 +191,287 @@ function DistrictsTab() {
   const [search, setSearch] = useState('')
   const [filterRegion, setFilterRegion] = useState('')
   const [modal, setModal] = useState(null)
+  const [confirm, setConfirm] = useState(null)
   const [form, setForm] = useState({ name: '', region: '', code: '' })
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    orgAPI.getRegions({ page_size: 200 }).then(r => setRegions(r.data.results || []))
-  }, [])
-
+  useEffect(() => { orgAPI.getRegions({ page_size: 200 }).then(r => setRegions(r.data.results || [])) }, [])
   const load = useCallback(() => {
     setLoading(true)
-    orgAPI.getDistricts({ search, region: filterRegion || undefined, page_size: 200 })
-      .then(r => setItems(r.data.results || []))
-      .finally(() => setLoading(false))
+    orgAPI.getDistricts({ search, region: filterRegion || undefined, page_size: 200 }).then(r => setItems(r.data.results || [])).finally(() => setLoading(false))
   }, [search, filterRegion])
-
   useEffect(() => { load() }, [load])
 
-  const openAdd = () => { setForm({ name: '', region: filterRegion || '', code: '' }); setModal({ mode: 'add' }) }
-  const openEdit = (row) => { setForm({ name: row.name, region: String(row.region), code: row.code || '' }); setModal({ mode: 'edit', data: row }) }
+  const openAdd  = () => { setForm({ name: '', region: filterRegion || '', code: '' }); setModal({ mode: 'add' }) }
+  const openEdit = (r) => { setForm({ name: r.name, region: String(r.region), code: r.code || '' }); setModal({ mode: 'edit', data: r }) }
+
   const handleSave = async () => {
-    if (!form.name.trim() || !form.region) return toast.error('Nom va viloyatni to\'ldiring')
+    if (!form.name.trim() || !form.region) return toast.error("Nom va viloyatni to'ldiring")
     setSaving(true)
     try {
-      const payload = { name: form.name, region: form.region, code: form.code }
-      if (modal.mode === 'add') {
-        await orgAPI.createDistrict(payload)
-        toast.success('Tuman qo\'shildi')
-      } else {
-        await orgAPI.updateDistrict(modal.data.id, payload)
-        toast.success('Tuman yangilandi')
-      }
+      modal.mode === 'add' ? await orgAPI.createDistrict(form) : await orgAPI.updateDistrict(modal.data.id, form)
+      toast.success(modal.mode === 'add' ? "Tuman qo'shildi" : 'Tuman yangilandi')
       setModal(null); load()
-    } catch (e) {
-      const err = e.response?.data
-      const msg = err?.name?.[0] || err?.code?.[0] || err?.detail || 'Xatolik yuz berdi'
-      toast.error(msg)
-    } finally { setSaving(false) }
+    } catch (e) { toast.error(e.response?.data?.name?.[0] || 'Xatolik') } finally { setSaving(false) }
   }
 
-  const regionOptions = regions.map(r => ({ value: String(r.id), label: r.name }))
-  const getRegionName = (id) => regions.find(r => r.id === id)?.name || id
-
-  const cols = [
-    { key: 'name', label: 'Tuman nomi' },
-    { key: 'region', label: 'Viloyat', render: r => getRegionName(r.region) },
-    { key: 'schools_count', label: 'Maktablar', render: r => <span className="font-semibold text-emerald-600">{r.schools_count ?? 0}</span> },
-    { key: 'students_count', label: "O'quvchilar", render: r => <span className="font-semibold text-violet-600">{r.students_count ?? 0}</span> },
-  ]
+  const getRegionName = (id) => regions.find(r => r.id === id)?.name || '—'
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Qidirish..."
-            className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
-        </div>
-        <div className="relative">
-          <select value={filterRegion} onChange={e => setFilterRegion(e.target.value)}
-            className="pl-3 pr-8 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white appearance-none">
-            <option value="">Barcha viloyatlar</option>
+      <FilterBar>
+        <SearchInput value={search} onChange={setSearch} placeholder="Tuman qidirish..." />
+        <select value={filterRegion} onChange={e => setFilterRegion(e.target.value)} style={selectStyle}>
+          <option value="">Barcha viloyatlar</option>
+          {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+        </select>
+        <Button icon={Plus} onClick={openAdd}>Tuman qo'shish</Button>
+        <span style={{ marginLeft: 'auto', fontSize: 12.5, color: '#94A3B8' }}>{items.length} ta tuman</span>
+      </FilterBar>
+      <OrgTable loading={loading} rows={items} empty="Tumanlar yo'q" onEdit={openEdit} onDelete={r => setConfirm(r)}
+        cols={[
+          { key: 'name',   label: 'Tuman nomi', render: r => <span style={{ fontWeight: 600, color: '#0F172A' }}>{r.name}</span> },
+          { key: 'region', label: 'Viloyat',    render: r => getRegionName(r.region) },
+          { key: 'schools_count',  label: 'Maktablar',   render: r => <CountChip value={r.schools_count}  color="#059669" /> },
+          { key: 'students_count', label: "O'quvchilar", render: r => <CountChip value={r.students_count} color="#7C3AED" /> },
+        ]}
+      />
+      <Modal isOpen={!!modal} onClose={() => setModal(null)} title={modal?.mode === 'add' ? 'Yangi tuman' : 'Tumanni tahrirlash'}
+        footer={<><Button variant="secondary" onClick={() => setModal(null)}>Bekor qilish</Button><Button onClick={handleSave} loading={saving}>Saqlash</Button></>}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Input label="Tuman nomi" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Yunusobod tumani" />
+          <Input label="Kod" value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} placeholder="YUN" />
+          <Select label="Viloyat" required value={form.region} onChange={e => setForm(f => ({ ...f, region: e.target.value }))}>
+            <option value="">Viloyatni tanlang</option>
             {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
-          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-        </div>
-        <Button onClick={openAdd}><Plus className="w-4 h-4 mr-1" />Tuman qo'shish</Button>
-      </div>
-      <DataTable columns={cols} rows={items} loading={loading} onEdit={openEdit}
-        onDelete={async (row) => {
-          if (!confirm(`"${row.name}" tumanni o'chirasizmi?`)) return
-          try { await orgAPI.deleteDistrict(row.id); toast.success("O'chirildi"); load() }
-          catch { toast.error("O'chirib bo'lmadi — bog'liq ma'lumotlar bor") }
-        }}
-        emptyText="Tumanlar yo'q" />
-
-      <Modal isOpen={!!modal} onClose={() => setModal(null)}
-        title={modal?.mode === 'add' ? 'Yangi tuman' : 'Tumanni tahrirlash'}>
-        <div className="space-y-4">
-          <Field label="Tuman nomi *">
-            <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Masalan: Yunusobod tumani" />
-          </Field>
-          <Field label="Tuman kodi (Majburiy bo'lishi mumkin)">
-            <Input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} placeholder="Masalan: YUN" />
-          </Field>
-          <SelectField label="Viloyat *" value={form.region} onChange={v => setForm(f => ({ ...f, region: v }))}
-            options={regionOptions} placeholder="Viloyatni tanlang" />
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="secondary" onClick={() => setModal(null)}>Bekor qilish</Button>
-            <Button onClick={handleSave} disabled={saving}>{saving ? 'Saqlanmoqda...' : 'Saqlash'}</Button>
-          </div>
+          </Select>
         </div>
       </Modal>
+      <ConfirmModal isOpen={!!confirm} onClose={() => setConfirm(null)} danger
+        onConfirm={async () => { try { await orgAPI.deleteDistrict(confirm.id); toast.success("O'chirildi"); load() } catch { toast.error("O'chirib bo'lmadi") } finally { setConfirm(null) } }}
+        title="Tumanni o'chirish" message={`"${confirm?.name}" tumanni o'chirasizmi?`} confirmLabel="O'chirish" />
     </>
   )
 }
 
-// ─── SCHOOLS ─────────────────────────────────────────────────────────────────
+/* ── SCHOOLS ── */
 function SchoolsTab() {
   const [items, setItems] = useState([])
-  const [regions, setRegions] = useState([])
   const [districts, setDistricts] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterDistrict, setFilterDistrict] = useState('')
   const [modal, setModal] = useState(null)
+  const [confirm, setConfirm] = useState(null)
   const [form, setForm] = useState({ name: '', district: '', address: '', phone: '', director_name: '' })
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    orgAPI.getRegions({ page_size: 200 }).then(r => setRegions(r.data.results || []))
-    orgAPI.getDistricts({ page_size: 500 }).then(r => setDistricts(r.data.results || []))
-  }, [])
-
+  useEffect(() => { orgAPI.getDistricts({ page_size: 500 }).then(r => setDistricts(r.data.results || [])) }, [])
   const load = useCallback(() => {
     setLoading(true)
-    orgAPI.getSchools({ search, district: filterDistrict || undefined, page_size: 200 })
-      .then(r => setItems(r.data.results || []))
-      .finally(() => setLoading(false))
+    orgAPI.getSchools({ search, district: filterDistrict || undefined, page_size: 200 }).then(r => setItems(r.data.results || [])).finally(() => setLoading(false))
   }, [search, filterDistrict])
-
   useEffect(() => { load() }, [load])
 
-  const openAdd = () => { setForm({ name: '', district: '', address: '', phone: '', director_name: '' }); setModal({ mode: 'add' }) }
-  const openEdit = (row) => {
-    setForm({ name: row.name, district: String(row.district), address: row.address || '', phone: row.phone || '', director_name: row.director_name || '' })
-    setModal({ mode: 'edit', data: row })
-  }
+  const openAdd  = () => { setForm({ name: '', district: filterDistrict || '', address: '', phone: '', director_name: '' }); setModal({ mode: 'add' }) }
+  const openEdit = (r) => { setForm({ name: r.name, district: String(r.district), address: r.address || '', phone: r.phone || '', director_name: r.director_name || '' }); setModal({ mode: 'edit', data: r }) }
 
   const handleSave = async () => {
-    if (!form.name.trim() || !form.district) return toast.error('Nom va tumanni to\'ldiring')
+    if (!form.name.trim() || !form.district) return toast.error("Nom va tumanni to'ldiring")
     setSaving(true)
     try {
-      const payload = { name: form.name, district: form.district }
-      if (form.address) payload.address = form.address
-      if (form.phone) payload.phone = form.phone
-      if (form.director_name) payload.director_name = form.director_name
-      if (modal.mode === 'add') {
-        await orgAPI.createSchool(payload)
-        toast.success('Maktab qo\'shildi')
-      } else {
-        await orgAPI.updateSchool(modal.data.id, payload)
-        toast.success('Maktab yangilandi')
-      }
+      const p = { name: form.name, district: form.district }
+      if (form.address) p.address = form.address
+      if (form.phone) p.phone = form.phone
+      if (form.director_name) p.director_name = form.director_name
+      modal.mode === 'add' ? await orgAPI.createSchool(p) : await orgAPI.updateSchool(modal.data.id, p)
+      toast.success(modal.mode === 'add' ? "Maktab qo'shildi" : 'Maktab yangilandi')
       setModal(null); load()
-    } catch (e) {
-      toast.error(e.response?.data?.name?.[0] || 'Xatolik')
-    } finally { setSaving(false) }
+    } catch (e) { toast.error(e.response?.data?.name?.[0] || 'Xatolik') } finally { setSaving(false) }
   }
 
-  const districtOptions = districts.map(d => ({ value: String(d.id), label: d.name }))
   const getDistrictName = (id) => districts.find(d => d.id === id)?.name || '—'
-
-  const cols = [
-    { key: 'name', label: 'Maktab nomi' },
-    { key: 'district', label: 'Tuman', render: r => getDistrictName(r.district) },
-    { key: 'address', label: 'Manzil', render: r => r.address || '—' },
-    { key: 'phone', label: 'Telefon', render: r => r.phone || '—' },
-    { key: 'students_count', label: "O'quvchilar", render: r => <span className="font-semibold text-violet-600">{r.students_count ?? 0}</span> },
-  ]
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Maktab qidirish..."
-            className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
-        </div>
-        <div className="relative">
-          <select value={filterDistrict} onChange={e => setFilterDistrict(e.target.value)}
-            className="pl-3 pr-8 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white appearance-none">
-            <option value="">Barcha tumanlar</option>
+      <FilterBar>
+        <SearchInput value={search} onChange={setSearch} placeholder="Maktab qidirish..." />
+        <select value={filterDistrict} onChange={e => setFilterDistrict(e.target.value)} style={selectStyle}>
+          <option value="">Barcha tumanlar</option>
+          {districts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+        </select>
+        <Button icon={Plus} onClick={openAdd}>Maktab qo'shish</Button>
+        <span style={{ marginLeft: 'auto', fontSize: 12.5, color: '#94A3B8' }}>{items.length} ta maktab</span>
+      </FilterBar>
+      <OrgTable loading={loading} rows={items} empty="Maktablar yo'q" onEdit={openEdit} onDelete={r => setConfirm(r)}
+        cols={[
+          { key: 'name',     label: 'Maktab nomi', render: r => <span style={{ fontWeight: 600, color: '#0F172A' }}>{r.name}</span> },
+          { key: 'district', label: 'Tuman',       render: r => getDistrictName(r.district) },
+          { key: 'phone',    label: 'Telefon',      render: r => r.phone || '—' },
+          { key: 'students_count', label: "O'quvchilar", render: r => <CountChip value={r.students_count} color="#7C3AED" /> },
+        ]}
+      />
+      <Modal isOpen={!!modal} onClose={() => setModal(null)} title={modal?.mode === 'add' ? 'Yangi maktab' : 'Maktabni tahrirlash'}
+        footer={<><Button variant="secondary" onClick={() => setModal(null)}>Bekor qilish</Button><Button onClick={handleSave} loading={saving}>Saqlash</Button></>}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Input label="Maktab nomi" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="145-son maktab" />
+          <Select label="Tuman" required value={form.district} onChange={e => setForm(f => ({ ...f, district: e.target.value }))}>
+            <option value="">Tumanni tanlang</option>
             {districts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </select>
-          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-        </div>
-        <Button onClick={openAdd}><Plus className="w-4 h-4 mr-1" />Maktab qo'shish</Button>
-      </div>
-      <DataTable columns={cols} rows={items} loading={loading} onEdit={openEdit}
-        onDelete={async (row) => {
-          if (!confirm(`"${row.name}" maktabini o'chirasizmi?`)) return
-          try { await orgAPI.deleteSchool(row.id); toast.success("O'chirildi"); load() }
-          catch { toast.error("O'chirib bo'lmadi — bog'liq ma'lumotlar bor") }
-        }}
-        emptyText="Maktablar yo'q" />
-
-      <Modal isOpen={!!modal} onClose={() => setModal(null)}
-        title={modal?.mode === 'add' ? 'Yangi maktab' : 'Maktabni tahrirlash'}>
-        <div className="space-y-4">
-          <Field label="Maktab nomi *">
-            <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Masalan: 145-son maktab" />
-          </Field>
-          <SelectField label="Tuman *" value={form.district} onChange={v => setForm(f => ({ ...f, district: v }))}
-            options={districtOptions} placeholder="Tumanni tanlang" />
-          <Field label="Manzil">
-            <Input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="Ko'cha, uy raqami" />
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Telefon">
-              <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="+998..." />
-            </Field>
-            <Field label="Direktor ismi">
-              <Input value={form.director_name} onChange={e => setForm(f => ({ ...f, director_name: e.target.value }))} placeholder="F.I.O." />
-            </Field>
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="secondary" onClick={() => setModal(null)}>Bekor qilish</Button>
-            <Button onClick={handleSave} disabled={saving}>{saving ? 'Saqlanmoqda...' : 'Saqlash'}</Button>
+          </Select>
+          <Input label="Manzil" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="Ko'cha, uy raqami" />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Input label="Telefon" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="+998..." />
+            <Input label="Direktor" value={form.director_name} onChange={e => setForm(f => ({ ...f, director_name: e.target.value }))} placeholder="F.I.O." />
           </div>
         </div>
       </Modal>
+      <ConfirmModal isOpen={!!confirm} onClose={() => setConfirm(null)} danger
+        onConfirm={async () => { try { await orgAPI.deleteSchool(confirm.id); toast.success("O'chirildi"); load() } catch { toast.error("O'chirib bo'lmadi") } finally { setConfirm(null) } }}
+        title="Maktabni o'chirish" message={`"${confirm?.name}" maktabini o'chirasizmi?`} confirmLabel="O'chirish" />
     </>
   )
 }
 
-// ─── CLASSES ─────────────────────────────────────────────────────────────────
+/* ── CLASSES ── */
 function ClassesTab() {
   const [items, setItems] = useState([])
   const [schools, setSchools] = useState([])
+  const [teachers, setTeachers] = useState([])
   const [loading, setLoading] = useState(true)
   const [filterSchool, setFilterSchool] = useState('')
   const [modal, setModal] = useState(null)
+  const [confirm, setConfirm] = useState(null)
   const [form, setForm] = useState({ grade: '', section: '', name: '', school: '', academic_year: '2024-2025', teacher: '' })
   const [saving, setSaving] = useState(false)
-  const [teachers, setTeachers] = useState([])
 
-  useEffect(() => {
-    orgAPI.getSchools({ page_size: 200 }).then(r => setSchools(r.data.results || []))
-  }, [])
-
+  useEffect(() => { orgAPI.getSchools({ page_size: 200 }).then(r => setSchools(r.data.results || [])) }, [])
   const load = useCallback(() => {
     setLoading(true)
-    orgAPI.getClasses({ school: filterSchool || undefined, page_size: 200 })
-      .then(r => setItems(r.data.results || []))
-      .finally(() => setLoading(false))
+    orgAPI.getClasses({ school: filterSchool || undefined, page_size: 200 }).then(r => setItems(r.data.results || [])).finally(() => setLoading(false))
   }, [filterSchool])
-
   useEffect(() => { load() }, [load])
-
   useEffect(() => {
-    if (form.school) {
-      studentsAPI.getTeachers({ school: form.school, page_size: 100 })
-        .then(r => setTeachers(r.data.results || []))
-        .catch(() => setTeachers([]))
-    } else {
-      setTeachers([])
-    }
+    if (form.school) studentsAPI.getTeachers({ school: form.school, page_size: 100 }).then(r => setTeachers(r.data.results || [])).catch(() => setTeachers([]))
+    else setTeachers([])
   }, [form.school])
 
-  const openAdd = () => { setForm({ grade: '', section: '', name: '', school: filterSchool || '', academic_year: '2024-2025', teacher: '' }); setModal({ mode: 'add' }) }
-  const openEdit = (row) => { setForm({ grade: String(row.grade), section: row.section, name: row.name || '', school: String(row.school), academic_year: row.academic_year || '2024-2025', teacher: row.teacher ? String(row.teacher) : '' }); setModal({ mode: 'edit', data: row }) }
+  const openAdd  = () => { setForm({ grade: '', section: '', name: '', school: filterSchool || '', academic_year: '2024-2025', teacher: '' }); setModal({ mode: 'add' }) }
+  const openEdit = (r) => { setForm({ grade: String(r.grade), section: r.section, name: r.name || '', school: String(r.school), academic_year: r.academic_year || '2024-2025', teacher: r.teacher ? String(r.teacher) : '' }); setModal({ mode: 'edit', data: r }) }
 
   const handleSave = async () => {
     if (!form.grade || !form.section || !form.school) return toast.error('Barcha maydonlarni to\'ldiring')
     setSaving(true)
     try {
-      const payload = { 
-        grade: parseInt(form.grade), 
-        section: form.section.toUpperCase(), 
-        name: form.name || `${form.grade}-${form.section}`,
-        school: form.school,
-        academic_year: form.academic_year,
-        teacher: form.teacher || null
-      }
-      if (modal.mode === 'add') {
-        await orgAPI.createClass(payload)
-        toast.success('Sinf qo\'shildi')
-      } else {
-        await orgAPI.updateClass(modal.data.id, payload)
-        toast.success('Sinf yangilandi')
-      }
+      const p = { grade: parseInt(form.grade), section: form.section.toUpperCase(), name: form.name || `${form.grade}-${form.section}`, school: form.school, academic_year: form.academic_year, teacher: form.teacher || null }
+      modal.mode === 'add' ? await orgAPI.createClass(p) : await orgAPI.updateClass(modal.data.id, p)
+      toast.success(modal.mode === 'add' ? "Sinf qo'shildi" : 'Sinf yangilandi')
       setModal(null); load()
-    } catch (e) {
-      const err = e.response?.data
-      const msg = err?.detail || Object.values(err || {}).flat()[0] || 'Xatolik yuz berdi'
-      toast.error(msg)
-    } finally { setSaving(false) }
+    } catch (e) { toast.error(Object.values(e.response?.data || {}).flat()[0] || 'Xatolik') } finally { setSaving(false) }
   }
 
-  const handleDelete = async (row) => {
-    if (!confirm(`"${row.name || row.grade + row.section}" sinfini o'chirasizmi?`)) return
-    try {
-      await orgAPI.deleteClass(row.id)
-      toast.success('O\'chirildi'); load()
-    } catch { toast.error('O\'chirib bo\'lmadi') }
-  }
-
-  const schoolOptions = schools.map(s => ({ value: String(s.id), label: s.name }))
   const getSchoolName = (id) => schools.find(s => s.id === id)?.name || '—'
-
-  const cols = [
-    { key: 'name', label: 'Sinf', render: r => <span className="font-semibold text-violet-700">{r.name || `${r.grade}-${r.section}`}</span> },
-    { key: 'school', label: 'Maktab', render: r => getSchoolName(r.school) },
-    { key: 'teacher_name', label: 'Sinf rahbari', render: r => r.teacher_name || <span className="text-slate-400 italic">Tayinlanmagan</span> },
-    { key: 'students_count', label: "O'quvchilar soni", render: r => <span className="font-semibold">{r.students_count ?? 0}</span> },
-  ]
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <div className="relative">
-          <select value={filterSchool} onChange={e => setFilterSchool(e.target.value)}
-            className="pl-3 pr-8 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white appearance-none">
-            <option value="">Barcha maktablar</option>
+      <FilterBar>
+        <select value={filterSchool} onChange={e => setFilterSchool(e.target.value)} style={selectStyle}>
+          <option value="">Barcha maktablar</option>
+          {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+        <Button icon={Plus} onClick={openAdd}>Sinf qo'shish</Button>
+        <span style={{ marginLeft: 'auto', fontSize: 12.5, color: '#94A3B8' }}>{items.length} ta sinf</span>
+      </FilterBar>
+      <OrgTable loading={loading} rows={items} empty="Sinflar yo'q" onEdit={openEdit} onDelete={r => setConfirm(r)}
+        cols={[
+          { key: 'name',         label: 'Sinf',        render: r => <span style={{ fontWeight: 700, color: '#7C3AED' }}>{r.name || `${r.grade}-${r.section}`}</span> },
+          { key: 'school',       label: 'Maktab',      render: r => getSchoolName(r.school) },
+          { key: 'teacher_name', label: 'Sinf rahbari', render: r => r.teacher_name || <span style={{ color: '#CBD5E1', fontStyle: 'italic' }}>Tayinlanmagan</span> },
+          { key: 'students_count', label: "O'quvchilar", render: r => <CountChip value={r.students_count} color="#7C3AED" /> },
+        ]}
+      />
+      <Modal isOpen={!!modal} onClose={() => setModal(null)} title={modal?.mode === 'add' ? 'Yangi sinf' : 'Sinfni tahrirlash'}
+        footer={<><Button variant="secondary" onClick={() => setModal(null)}>Bekor qilish</Button><Button onClick={handleSave} loading={saving}>Saqlash</Button></>}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Select label="Maktab" required value={form.school} onChange={e => setForm(f => ({ ...f, school: e.target.value, teacher: '' }))}>
+            <option value="">Maktabni tanlang</option>
             {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-        </div>
-        <Button onClick={openAdd}><Plus className="w-4 h-4 mr-1" />Sinf qo'shish</Button>
-      </div>
-      <DataTable columns={cols} rows={items} loading={loading} onEdit={openEdit} onDelete={handleDelete} emptyText="Sinflar yo'q" />
-
-      <Modal isOpen={!!modal} onClose={() => setModal(null)}
-        title={modal?.mode === 'add' ? 'Yangi sinf' : 'Sinfni tahrirlash'}>
-        <div className="space-y-4">
-          <SelectField label="Maktab *" value={form.school} onChange={v => setForm(f => ({ ...f, school: v }))}
-            options={schoolOptions} placeholder="Maktabni tanlang" />
-          <Field label="Sinf nomi (Avtomatik: 5-A, 9-B)">
-            <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Masalan: 5-A" />
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Sinf raqami *">
-              <Input type="number" min="1" max="11" value={form.grade}
-                onChange={e => setForm(f => ({ ...f, grade: e.target.value }))} placeholder="1-11" />
-            </Field>
-            <Field label="Sinf harfi *">
-              <Input value={form.section} onChange={e => setForm(f => ({ ...f, section: e.target.value }))} placeholder="A, B, V..." maxLength={2} />
-            </Field>
+          </Select>
+          <Input label="Sinf nomi" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="5-A (ixtiyoriy — quyidagi maydonlardan avtomatik)" />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Input label="Sinf raqami" required type="number" min="1" max="11" value={form.grade} onChange={e => setForm(f => ({ ...f, grade: e.target.value }))} placeholder="1-11" />
+            <Input label="Sinf harfi" required value={form.section} onChange={e => setForm(f => ({ ...f, section: e.target.value }))} placeholder="A, B, V..." maxLength={2} />
           </div>
-          <Field label="O'quv yili *">
-            <Input value={form.academic_year} onChange={e => setForm(f => ({ ...f, academic_year: e.target.value }))} placeholder="2024-2025" />
-          </Field>
-          <SelectField label="Sinf rahbari" value={form.teacher} onChange={v => setForm(f => ({ ...f, teacher: v }))}
-            options={teachers.map(t => ({ value: String(t.id), label: t.full_name }))} placeholder="Sinf rahbarini tanlang" />
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="secondary" onClick={() => setModal(null)}>Bekor qilish</Button>
-            <Button onClick={handleSave} disabled={saving}>{saving ? 'Saqlanmoqda...' : 'Saqlash'}</Button>
-          </div>
+          <Input label="O'quv yili" value={form.academic_year} onChange={e => setForm(f => ({ ...f, academic_year: e.target.value }))} placeholder="2024-2025" />
+          <Select label="Sinf rahbari" value={form.teacher} onChange={e => setForm(f => ({ ...f, teacher: e.target.value }))}>
+            <option value="">Sinf rahbarini tanlang</option>
+            {teachers.map(t => <option key={t.id} value={t.id}>{t.full_name}</option>)}
+          </Select>
         </div>
       </Modal>
+      <ConfirmModal isOpen={!!confirm} onClose={() => setConfirm(null)} danger
+        onConfirm={async () => { try { await orgAPI.deleteClass(confirm.id); toast.success("O'chirildi"); load() } catch { toast.error("O'chirib bo'lmadi") } finally { setConfirm(null) } }}
+        title="Sinfni o'chirish" message={`"${confirm?.name || (confirm?.grade + '-' + confirm?.section)}" sinfini o'chirasizmi?`} confirmLabel="O'chirish" />
     </>
   )
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+const selectStyle = {
+  padding: '7px 30px 7px 12px', border: '1.5px solid #E2E8F0', borderRadius: 9,
+  fontSize: 13, color: '#374151', background: 'white', outline: 'none',
+  transition: 'all 0.15s', fontFamily: 'inherit', cursor: 'pointer',
+  appearance: 'none',
+  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+  backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center',
+}
+
+/* ── MAIN PAGE ── */
 export default function OrganizationsPage() {
-  const [tab, setTab] = useState('regions')
+  const { pathname } = useLocation()
+  const initialTab = ['districts', 'schools', 'classes'].find(t => pathname.includes(t)) || 'regions'
+  const [tab, setTab] = useState(initialTab)
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">Tashkilotlar</h1>
-        <p className="text-slate-500 text-sm mt-0.5">Viloyat, tuman, maktab va sinflarni boshqarish</p>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0F172A', margin: 0 }}>Tashkilotlar</h1>
+        <p style={{ fontSize: 13, color: '#64748B', marginTop: 4 }}>Viloyat, tuman, maktab va sinflarni boshqarish</p>
       </div>
 
-      <Card>
-        {/* Tabs */}
-        <div className="border-b border-slate-100">
-          <div className="flex overflow-x-auto">
-            {TABS.map(t => {
-              const Icon = t.icon
-              const active = tab === t.id
-              return (
-                <button key={t.id} onClick={() => setTab(t.id)}
-                  className={`flex items-center gap-2 px-5 py-4 text-sm font-medium border-b-2 whitespace-nowrap transition-colors
-                    ${active ? 'border-violet-500 text-violet-700' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>
-                  <Icon className="w-4 h-4" />
-                  {t.label}
-                </button>
-              )
-            })}
-          </div>
+      <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+        {/* Tab bar */}
+        <div style={{ display: 'flex', borderBottom: '1px solid #F1F5F9', overflowX: 'auto' }}>
+          {TABS.map(t => {
+            const Icon = t.icon
+            const active = tab === t.id
+            return (
+              <button key={t.id} onClick={() => setTab(t.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 7,
+                  padding: '14px 20px',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 13.5, fontWeight: active ? 700 : 500,
+                  color: active ? t.color : '#64748B',
+                  borderBottom: `2px solid ${active ? t.color : 'transparent'}`,
+                  marginBottom: -1,
+                  transition: 'all 0.15s', whiteSpace: 'nowrap',
+                }}
+              >
+                <Icon style={{ width: 15, height: 15 }} />
+                {t.label}
+              </button>
+            )
+          })}
         </div>
 
-        <div className="p-6">
-          {tab === 'regions' && <RegionsTab />}
+        {/* Tab content */}
+        <div style={{ padding: '20px 20px 24px' }}>
+          {tab === 'regions'   && <RegionsTab />}
           {tab === 'districts' && <DistrictsTab />}
-          {tab === 'schools' && <SchoolsTab />}
-          {tab === 'classes' && <ClassesTab />}
+          {tab === 'schools'   && <SchoolsTab />}
+          {tab === 'classes'   && <ClassesTab />}
         </div>
-      </Card>
+      </div>
     </div>
   )
 }

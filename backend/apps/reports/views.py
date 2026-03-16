@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.db.models import Count, Q, Avg
 from datetime import date, timedelta
 from calendar import monthrange
+from typing import Any
 
 from apps.attendance.models import AttendanceRecord
 from apps.students.models import Student
@@ -261,7 +262,7 @@ class AnalyticsView(APIView):
         overall['period'] = period
 
         # Breakdown level
-        breakdown = []
+        breakdown: list[dict[str, Any]] = []
         if school_id:
             # class breakdown
             for cls in Class.objects.filter(school_id=school_id, is_active=True).order_by('grade', 'section'):

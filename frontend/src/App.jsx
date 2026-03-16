@@ -55,6 +55,8 @@ export default function App() {
         <Route path="parents" element={<ParentsPage />} />
         <Route path="classes" element={<OrganizationsPage />} />
         <Route path="devices" element={<DevicesPage />} />
+        {/* Parent */}
+        <Route path="my-children" element={<AttendancePage />} />
         {/* Attendance & reports */}
         <Route path="attendance" element={<AttendancePage />} />
         <Route path="reports" element={<ReportsPage />} />

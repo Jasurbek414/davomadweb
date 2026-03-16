@@ -8,3 +8,4 @@ channels
 daphne
 aiogram
 python-dotenv
+PyPDF2

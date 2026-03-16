@@ -1,28 +1,29 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Search, GraduationCap, Edit, Trash2, Camera, Upload, Cpu, CheckCircle, XCircle, Users, LayoutGrid, List, ChevronLeft, ChevronRight } from 'lucide-react'
-import { Card } from '../../components/ui/Card'
+import { Plus, Search, GraduationCap, Edit, Trash2, Camera, Upload, Cpu, CheckCircle, XCircle, LayoutGrid, List, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
-import { Modal } from '../../components/ui/Modal'
+import { Modal, ConfirmModal } from '../../components/ui/Modal'
 import { LoadingSpinner, EmptyState } from '../../components/ui/LoadingSpinner'
 import { studentsAPI } from '../../api/students'
 import { orgAPI } from '../../api/organizations'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
 
-// Photo upload cell - clickable area
+const inputStyle = {
+  width: '100%', padding: '9px 12px', border: '1px solid #E2E8F0', borderRadius: 9,
+  fontSize: 13, color: '#0F172A', outline: 'none', background: 'white', boxSizing: 'border-box',
+}
+const labelStyle = { fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 5 }
+
 function PhotoCell({ student, onPhotoUploaded }) {
   const inputRef = useRef()
   const [uploading, setUploading] = useState(false)
-
-  const handleClick = () => inputRef.current?.click()
+  const [hovered, setHovered] = useState(false)
 
   const handleChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    // Validate image
     if (!file.type.startsWith('image/')) { toast.error("Faqat rasm fayli qabul qilinadi"); return }
     if (file.size > 5 * 1024 * 1024) { toast.error("Rasm 5MB dan kichik bo'lishi kerak"); return }
-
     setUploading(true)
     try {
       const formData = new FormData()
@@ -30,87 +31,108 @@ function PhotoCell({ student, onPhotoUploaded }) {
       const { data } = await studentsAPI.uploadPhoto(student.id, formData)
       toast.success("Rasm yuklandi")
       onPhotoUploaded(student.id, data.photo_url)
-    } catch (e) {
-      toast.error("Rasm yuklanmadi")
-    } finally {
-      setUploading(false)
-      e.target.value = ''
-    }
+    } catch { toast.error("Rasm yuklanmadi") }
+    finally { setUploading(false); e.target.value = '' }
   }
 
   return (
-    <div className="relative group cursor-pointer" onClick={handleClick}>
-      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleChange} />
+    <div
+      style={{ position: 'relative', width: 56, height: 56, cursor: 'pointer', flexShrink: 0 }}
+      onClick={() => inputRef.current?.click()}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleChange} />
       {student.photo_url ? (
         <img src={student.photo_url} alt={student.full_name}
-          className="w-20 h-20 rounded-xl object-cover border-2 border-white shadow-md" />
+          style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'cover', border: '2px solid white', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }} />
       ) : (
-        <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center border-2 border-dashed border-slate-300">
-          <Camera className="w-6 h-6 text-slate-400" />
+        <div style={{
+          width: 56, height: 56, borderRadius: 12,
+          background: 'linear-gradient(135deg, #E2E8F0, #CBD5E1)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          border: '2px dashed #CBD5E1',
+        }}>
+          <Camera style={{ width: 20, height: 20, color: '#94A3B8' }} />
         </div>
       )}
       {/* Hover overlay */}
-      <div className="absolute inset-0 rounded-xl bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-        {uploading ? (
-          <LoadingSpinner size="sm" />
-        ) : (
-          <Upload className="w-5 h-5 text-white" />
-        )}
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: 12,
+        background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        opacity: hovered ? 1 : 0, transition: 'opacity 0.15s',
+      }}>
+        {uploading ? <LoadingSpinner /> : <Upload style={{ width: 18, height: 18, color: 'white' }} />}
       </div>
     </div>
   )
 }
 
-// Student card for grid view
-function StudentCard({ student, onEdit, onDelete, onPushFace, onPhotoUploaded, pushingId }) {
-  const hasFace = student.has_photo
-  const isPushing = pushingId === student.id
-
+function FaceBadge({ has }) {
   return (
-    <Card className="p-4 hover:shadow-md transition-shadow">
-      <div className="flex gap-3">
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      padding: '2px 8px', borderRadius: 999, fontSize: 11.5, fontWeight: 700,
+      background: has ? '#ECFDF5' : '#FEF2F2',
+      color: has ? '#059669' : '#DC2626',
+      border: `1px solid ${has ? '#A7F3D0' : '#FECACA'}`,
+    }}>
+      {has ? <CheckCircle style={{ width: 11, height: 11 }} /> : <XCircle style={{ width: 11, height: 11 }} />}
+      {has ? 'Yuz bor' : "Yuz yo'q"}
+    </span>
+  )
+}
+
+function StudentCard({ student, onEdit, onDelete, onPushFace, onPhotoUploaded, pushingId }) {
+  const isPushing = pushingId === student.id
+  return (
+    <div style={{
+      background: 'white', border: '1px solid #E2E8F0', borderRadius: 14,
+      padding: '14px', display: 'flex', flexDirection: 'column', gap: 10,
+      boxShadow: '0 1px 3px rgba(0,0,0,0.04)', transition: 'box-shadow 0.2s',
+    }}
+      onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)'}
+      onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'}
+    >
+      <div style={{ display: 'flex', gap: 10 }}>
         <PhotoCell student={student} onPhotoUploaded={onPhotoUploaded} />
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-slate-800 text-sm leading-tight truncate">
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {student.last_name} {student.first_name}
           </p>
-          <p className="text-xs text-slate-500 truncate">{student.middle_name}</p>
-          <div className="flex items-center gap-1.5 mt-1.5">
-            <span className="text-xs font-mono bg-violet-50 text-violet-600 px-1.5 py-0.5 rounded">
-              {student.student_id}
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 mt-1">{student.class_name || '—'}</p>
-          <div className="flex items-center gap-1 mt-1.5">
-            {hasFace ? (
-              <span className="flex items-center gap-1 text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-medium">
-                <CheckCircle className="w-3 h-3" />Yuz bor
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded-full font-medium">
-                <XCircle className="w-3 h-3" />Yuz yo'q
-              </span>
-            )}
+          {student.middle_name && (
+            <p style={{ fontSize: 11.5, color: '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {student.middle_name}
+            </p>
+          )}
+          <span style={{ display: 'inline-block', marginTop: 4, fontSize: 11, fontFamily: 'monospace', background: '#EEF2FF', color: '#4F46E5', padding: '1px 6px', borderRadius: 5 }}>
+            {student.student_id}
+          </span>
+          <p style={{ fontSize: 11.5, color: '#94A3B8', marginTop: 4 }}>{student.class_name || '—'}</p>
+          <div style={{ marginTop: 5 }}>
+            <FaceBadge has={student.has_photo} />
           </div>
         </div>
       </div>
-      <div className="flex gap-1.5 mt-3 pt-3 border-t border-slate-100">
-        <button onClick={() => onPushFace(student)} disabled={!hasFace || isPushing}
-          title="Yuzni qurilmaga yuklash"
-          className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-medium text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-          {isPushing ? <LoadingSpinner size="xs" /> : <Cpu className="w-3.5 h-3.5" />}
+      <div style={{ display: 'flex', gap: 6, paddingTop: 8, borderTop: '1px solid #F1F5F9' }}>
+        <button onClick={() => onPushFace(student)} disabled={!student.has_photo || isPushing}
+          style={{
+            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+            padding: '6px', borderRadius: 8, border: '1px solid #C7D2FE', background: '#EEF2FF',
+            color: '#4F46E5', fontSize: 11.5, fontWeight: 600, cursor: 'pointer',
+            opacity: !student.has_photo || isPushing ? 0.4 : 1,
+          }}>
+          {isPushing ? <LoadingSpinner /> : <Cpu style={{ width: 13, height: 13 }} />}
           Yuklash
         </button>
-        <button onClick={() => onEdit(student)}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors">
-          <Edit className="w-4 h-4" />
+        <button onClick={() => onEdit(student)} style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid #E2E8F0', background: 'white', color: '#64748B', cursor: 'pointer' }}>
+          <Edit style={{ width: 14, height: 14 }} />
         </button>
-        <button onClick={() => onDelete(student)}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">
-          <Trash2 className="w-4 h-4" />
+        <button onClick={() => onDelete(student)} style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid #FECACA', background: '#FEF2F2', color: '#EF4444', cursor: 'pointer' }}>
+          <Trash2 style={{ width: 14, height: 14 }} />
         </button>
       </div>
-    </Card>
+    </div>
   )
 }
 
@@ -121,9 +143,11 @@ export default function StudentsPage() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize] = useState(24)
-  const [viewMode, setViewMode] = useState('grid') // 'grid' | 'table'
+  const [viewMode, setViewMode] = useState('grid')
   const [showModal, setShowModal] = useState(false)
   const [editStudent, setEditStudent] = useState(null)
+  const [deleteStudent, setDeleteStudent] = useState(null)
+  const [deleting, setDeleting] = useState(false)
   const [schools, setSchools] = useState([])
   const [classes, setClasses] = useState([])
   const [filterSchool, setFilterSchool] = useState('')
@@ -131,7 +155,7 @@ export default function StudentsPage() {
   const [saving, setSaving] = useState(false)
   const [pushingId, setPushingId] = useState(null)
 
-  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm()
+  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm()
   const selectedSchool = watch('school')
 
   const loadStudents = useCallback(async () => {
@@ -144,11 +168,8 @@ export default function StudentsPage() {
       const { data } = await studentsAPI.getStudents(params)
       setStudents(data.results || data)
       setTotal(data.count || 0)
-    } catch {
-      toast.error("Ma'lumot yuklanmadi")
-    } finally {
-      setLoading(false)
-    }
+    } catch { toast.error("Ma'lumot yuklanmadi") }
+    finally { setLoading(false) }
   }, [search, page, pageSize, filterSchool, filterClass])
 
   useEffect(() => { loadStudents() }, [loadStudents])
@@ -158,13 +179,8 @@ export default function StudentsPage() {
     orgAPI.getClasses({ page_size: 1000 }).then(r => setClasses(r.data.results || r.data)).catch(() => {})
   }, [])
 
-  const filteredClasses = filterSchool
-    ? classes.filter(c => String(c.school) === String(filterSchool))
-    : classes
-
-  const formClasses = selectedSchool
-    ? classes.filter(c => String(c.school) === String(selectedSchool))
-    : classes
+  const filteredClasses = filterSchool ? classes.filter(c => String(c.school) === String(filterSchool)) : classes
+  const formClasses = selectedSchool ? classes.filter(c => String(c.school) === String(selectedSchool)) : classes
 
   const openCreate = () => { setEditStudent(null); reset({ gender: 'M', relationship: 'father' }); setShowModal(true) }
   const openEdit = (s) => { setEditStudent(s); reset({ ...s, class_ref: s.class_ref, school: s.school }); setShowModal(true) }
@@ -175,11 +191,8 @@ export default function StudentsPage() {
       const formData = new FormData()
       Object.entries(data).forEach(([k, v]) => {
         if (v !== undefined && v !== null && v !== '') {
-          if (k === 'photo' && v instanceof FileList) {
-            if (v[0]) formData.append('photo', v[0])
-          } else {
-            formData.append(k, v)
-          }
+          if (k === 'photo' && v instanceof FileList) { if (v[0]) formData.append('photo', v[0]) }
+          else formData.append(k, v)
         }
       })
       if (editStudent) {
@@ -193,20 +206,20 @@ export default function StudentsPage() {
       loadStudents()
     } catch (e) {
       const err = e.response?.data
-      const msg = err?.detail || (typeof err === 'object' ? Object.values(err).flat().join(', ') : 'Xatolik')
-      toast.error(msg)
-    } finally {
-      setSaving(false)
-    }
+      toast.error(err?.detail || (typeof err === 'object' ? Object.values(err).flat().join(', ') : 'Xatolik'))
+    } finally { setSaving(false) }
   }
 
-  const handleDelete = async (student) => {
-    if (!confirm(`"${student.full_name || student.last_name + ' ' + student.first_name}" ni o'chirasizmi?`)) return
+  const handleDelete = async () => {
+    if (!deleteStudent) return
+    setDeleting(true)
     try {
-      await studentsAPI.deleteStudent(student.id)
+      await studentsAPI.deleteStudent(deleteStudent.id)
       toast.success("O'chirildi")
+      setDeleteStudent(null)
       loadStudents()
     } catch { toast.error("O'chirishda xatolik") }
+    finally { setDeleting(false) }
   }
 
   const handlePushFace = async (student) => {
@@ -214,211 +227,212 @@ export default function StudentsPage() {
     try {
       const { data } = await studentsAPI.pushFace(student.id)
       toast.success(data.message)
-    } catch (e) {
-      toast.error(e.response?.data?.detail || "Yuz yuborishda xatolik")
-    } finally {
-      setPushingId(null)
-    }
+    } catch (e) { toast.error(e.response?.data?.detail || "Yuz yuborishda xatolik") }
+    finally { setPushingId(null) }
   }
 
   const handlePhotoUploaded = (studentId, photoUrl) => {
-    setStudents(prev => prev.map(s =>
-      s.id === studentId ? { ...s, photo_url: photoUrl, has_photo: true } : s
-    ))
+    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, photo_url: photoUrl, has_photo: true } : s))
   }
 
-  const noPhotoCount = students.filter(s => !s.has_photo).length
-  const withPhotoCount = students.filter(s => s.has_photo).length
+  const withPhoto = students.filter(s => s.has_photo).length
+  const noPhoto = students.filter(s => !s.has_photo).length
   const totalPages = Math.ceil(total / pageSize)
 
-  const inputCls = "w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-  const selectCls = `${inputCls} bg-white`
+  const selectStyle = { ...inputStyle, appearance: 'none' }
+
+  const modalFooter = (
+    <>
+      <Button variant="secondary" onClick={() => setShowModal(false)} type="button">Bekor qilish</Button>
+      <Button type="submit" form="student-form" loading={saving}>{editStudent ? 'Saqlash' : "Qo'shish"}</Button>
+    </>
+  )
+
+  const parentLinkLabel = (status) => {
+    if (status === 'active') return { text: 'Ulangan', color: '#059669' }
+    if (status === 'pending') return { text: 'Kutilmoqda', color: '#D97706' }
+    return { text: "Yo'q", color: '#94A3B8' }
+  }
 
   return (
-    <div className="space-y-5">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">O'quvchilar</h1>
-          <p className="text-slate-500 text-sm">
-            Jami: {total} ta •
-            <span className="text-emerald-600 ml-1">{withPhotoCount} rasmi bor</span> •
-            <span className="text-red-500 ml-1">{noPhotoCount} rasmi yo'q</span>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0F172A', margin: 0 }}>O'quvchilar</h1>
+          <p style={{ fontSize: 13, color: '#64748B', marginTop: 4 }}>
+            Jami: <strong style={{ color: '#0F172A' }}>{total}</strong> •{' '}
+            <span style={{ color: '#059669', fontWeight: 600 }}>{withPhoto} rasmi bor</span> •{' '}
+            <span style={{ color: '#DC2626', fontWeight: 600 }}>{noPhoto} rasmi yo'q</span>
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="hidden sm:flex border border-slate-200 rounded-lg overflow-hidden">
-            <button onClick={() => setViewMode('grid')}
-              className={`p-2 ${viewMode === 'grid' ? 'bg-violet-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
-              <LayoutGrid className="w-4 h-4" />
-            </button>
-            <button onClick={() => setViewMode('table')}
-              className={`p-2 ${viewMode === 'table' ? 'bg-violet-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
-              <List className="w-4 h-4" />
-            </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* View toggle */}
+          <div style={{ display: 'flex', border: '1px solid #E2E8F0', borderRadius: 10, overflow: 'hidden' }}>
+            {[{ mode: 'grid', Icon: LayoutGrid }, { mode: 'table', Icon: List }].map(({ mode, Icon }) => (
+              <button key={mode} onClick={() => setViewMode(mode)} style={{
+                padding: '7px 10px', border: 'none', cursor: 'pointer', transition: 'all 0.15s',
+                background: viewMode === mode ? '#4F46E5' : 'white',
+                color: viewMode === mode ? 'white' : '#94A3B8',
+              }}>
+                <Icon style={{ width: 15, height: 15 }} />
+              </button>
+            ))}
           </div>
-          <Button onClick={openCreate} icon={Plus}>Qo'shish</Button>
+          <Button icon={Plus} onClick={openCreate}>Qo'shish</Button>
         </div>
       </div>
 
-      {/* Face stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <Card className="p-3 flex items-center gap-3">
-          <div className="p-2 bg-violet-100 rounded-lg"><GraduationCap className="w-5 h-5 text-violet-600" /></div>
-          <div>
-            <p className="text-xs text-slate-500">Jami o'quvchi</p>
-            <p className="text-xl font-bold text-slate-800">{total}</p>
+      {/* Stats row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+        {[
+          { label: "Jami o'quvchi", value: total, color: '#0F172A', bg: '#F8FAFC', border: '#E2E8F0', Icon: GraduationCap, iconBg: '#EEF2FF', iconColor: '#4F46E5' },
+          { label: 'Rasmi bor (Face ID)', value: withPhoto, color: '#059669', bg: '#ECFDF5', border: '#A7F3D0', Icon: CheckCircle, iconBg: '#D1FAE5', iconColor: '#059669' },
+          { label: "Rasmi yo'q", value: noPhoto, color: '#DC2626', bg: '#FEF2F2', border: '#FECACA', Icon: XCircle, iconBg: '#FEE2E2', iconColor: '#DC2626' },
+        ].map(({ label, value, color, bg, border, Icon, iconBg, iconColor }) => (
+          <div key={label} style={{ background: 'white', border: `1px solid ${border}`, borderRadius: 14, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <div style={{ width: 40, height: 40, borderRadius: 11, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Icon style={{ width: 18, height: 18, color: iconColor }} />
+            </div>
+            <div>
+              <p style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1 }}>{value}</p>
+              <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 3 }}>{label}</p>
+            </div>
           </div>
-        </Card>
-        <Card className="p-3 flex items-center gap-3">
-          <div className="p-2 bg-emerald-100 rounded-lg"><CheckCircle className="w-5 h-5 text-emerald-600" /></div>
-          <div>
-            <p className="text-xs text-slate-500">Rasmi bor (Face ID)</p>
-            <p className="text-xl font-bold text-emerald-600">{withPhotoCount}</p>
-          </div>
-        </Card>
-        <Card className="p-3 flex items-center gap-3">
-          <div className="p-2 bg-red-100 rounded-lg"><XCircle className="w-5 h-5 text-red-500" /></div>
-          <div>
-            <p className="text-xs text-slate-500">Rasmi yo'q</p>
-            <p className="text-xl font-bold text-red-500">{noPhotoCount}</p>
-          </div>
-        </Card>
+        ))}
       </div>
 
       {/* Filters */}
-      <Card className="p-3">
-        <div className="flex flex-wrap gap-2 items-end">
-          <div className="relative flex-1 min-w-[180px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
-              placeholder="Ism, ID bo'yicha..."
-              className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500" />
-          </div>
-          <select value={filterSchool} onChange={e => { setFilterSchool(e.target.value); setFilterClass(''); setPage(1) }}
-            className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500 min-w-[160px]">
-            <option value="">Barcha maktablar</option>
-            {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-          <select value={filterClass} onChange={e => { setFilterClass(e.target.value); setPage(1) }}
-            className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500">
-            <option value="">Barcha sinflar</option>
-            {filteredClasses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          {(filterSchool || filterClass || search) && (
-            <button onClick={() => { setFilterSchool(''); setFilterClass(''); setSearch(''); setPage(1) }}
-              className="px-3 py-2 text-sm text-slate-500 hover:text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50">
-              Tozalash
-            </button>
-          )}
+      <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: '12px 16px', display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+        <div style={{ flex: '1 1 200px', position: 'relative' }}>
+          <Search style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', width: 15, height: 15, color: '#94A3B8' }} />
+          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
+            placeholder="Ism, ID bo'yicha..."
+            style={{ ...inputStyle, paddingLeft: 34 }} />
         </div>
-      </Card>
+        <select value={filterSchool} onChange={e => { setFilterSchool(e.target.value); setFilterClass(''); setPage(1) }}
+          style={{ ...selectStyle, minWidth: 160, flex: '0 1 auto' }}>
+          <option value="">Barcha maktablar</option>
+          {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+        <select value={filterClass} onChange={e => { setFilterClass(e.target.value); setPage(1) }}
+          style={{ ...selectStyle, minWidth: 130, flex: '0 1 auto' }}>
+          <option value="">Barcha sinflar</option>
+          {filteredClasses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        {(filterSchool || filterClass || search) && (
+          <button onClick={() => { setFilterSchool(''); setFilterClass(''); setSearch(''); setPage(1) }}
+            style={{ padding: '8px 14px', border: '1px solid #E2E8F0', borderRadius: 9, background: 'white', fontSize: 13, color: '#64748B', cursor: 'pointer' }}>
+            Tozalash
+          </button>
+        )}
+      </div>
 
       {/* Content */}
-      {loading ? <LoadingSpinner /> : students.length === 0 ? (
-        <EmptyState icon={GraduationCap} title="O'quvchilar topilmadi"
-          description="Yangi o'quvchi qo'shish uchun yuqoridagi tugmani bosing"
-          action={<Button onClick={openCreate} icon={Plus}>Qo'shish</Button>} />
+      {loading ? (
+        <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 16, padding: 40, display: 'flex', justifyContent: 'center' }}>
+          <LoadingSpinner />
+        </div>
+      ) : students.length === 0 ? (
+        <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 16, overflow: 'hidden' }}>
+          <EmptyState icon={GraduationCap} title="O'quvchilar topilmadi"
+            description="Yangi o'quvchi qo'shish uchun yuqoridagi tugmani bosing"
+            action={<Button onClick={openCreate} icon={Plus} size="sm">Qo'shish</Button>} />
+        </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
           {students.map(s => (
             <StudentCard key={s.id} student={s}
-              onEdit={openEdit} onDelete={handleDelete}
+              onEdit={openEdit} onDelete={s => setDeleteStudent(s)}
               onPushFace={handlePushFace} onPhotoUploaded={handlePhotoUploaded}
               pushingId={pushingId} />
           ))}
         </div>
       ) : (
-        <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100">
-                  {["Rasm", "O'quvchi", "ID", "Sinf", "Jins", "Yuz holati", "Ota-ona", ""].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {students.map(s => (
-                  <tr key={s.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-2.5">
-                      <PhotoCell student={s} onPhotoUploaded={handlePhotoUploaded} />
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <p className="font-medium text-slate-800">{s.last_name} {s.first_name}</p>
-                      <p className="text-xs text-slate-400">{s.middle_name}</p>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span className="text-xs font-mono bg-slate-100 px-2 py-0.5 rounded">{s.student_id}</span>
-                    </td>
-                    <td className="px-4 py-2.5 text-slate-600">{s.class_name || '—'}</td>
-                    <td className="px-4 py-2.5 text-slate-600">{s.gender === 'M' ? 'Erkak' : 'Ayol'}</td>
-                    <td className="px-4 py-2.5">
-                      {s.has_photo ? (
-                        <span className="flex items-center gap-1 text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full w-fit font-medium">
-                          <CheckCircle className="w-3 h-3" />Yuz bor
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded-full w-fit font-medium">
-                          <XCircle className="w-3 h-3" />Yuz yo'q
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span className={`text-xs font-medium ${s.parent_link_status === 'active' ? 'text-emerald-600' : s.parent_link_status === 'pending' ? 'text-amber-600' : 'text-slate-400'}`}>
-                        {s.parent_link_status === 'active' ? 'Ulangan' : s.parent_link_status === 'pending' ? 'Kutilmoqda' : "Yo'q"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => handlePushFace(s)} disabled={!s.has_photo || pushingId === s.id}
-                          title="Yuzni qurilmaga yuklash"
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors disabled:opacity-30">
-                          <Cpu className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => openEdit(s)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors">
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDelete(s)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          {/* Table header */}
+          <div style={{ display: 'grid', gridTemplateColumns: '70px 2.5fr 100px 1fr 80px 120px 100px 80px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+            {["Rasm", "O'quvchi", "ID", "Sinf", "Jins", "Yuz holati", "Ota-ona", ""].map((h, i) => (
+              <div key={i} style={{ padding: '11px 12px', fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</div>
+            ))}
           </div>
-        </Card>
+          {students.map((s, idx) => {
+            const pl = parentLinkLabel(s.parent_link_status)
+            return (
+              <div key={s.id} style={{
+                display: 'grid', gridTemplateColumns: '70px 2.5fr 100px 1fr 80px 120px 100px 80px',
+                alignItems: 'center',
+                borderBottom: idx < students.length - 1 ? '1px solid #F8FAFC' : 'none',
+                transition: 'background 0.12s',
+              }}
+                onMouseEnter={e => e.currentTarget.style.background = '#FAFBFD'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <div style={{ padding: '10px 12px' }}>
+                  <PhotoCell student={s} onPhotoUploaded={handlePhotoUploaded} />
+                </div>
+                <div style={{ padding: '10px 12px' }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>{s.last_name} {s.first_name}</p>
+                  <p style={{ fontSize: 11.5, color: '#94A3B8' }}>{s.middle_name}</p>
+                </div>
+                <div style={{ padding: '10px 12px' }}>
+                  <span style={{ fontSize: 11.5, fontFamily: 'monospace', background: '#EEF2FF', color: '#4F46E5', padding: '2px 6px', borderRadius: 5 }}>{s.student_id}</span>
+                </div>
+                <div style={{ padding: '10px 12px', fontSize: 13, color: '#475569' }}>{s.class_name || '—'}</div>
+                <div style={{ padding: '10px 12px', fontSize: 13, color: '#475569' }}>{s.gender === 'M' ? '♂' : '♀'}</div>
+                <div style={{ padding: '10px 12px' }}><FaceBadge has={s.has_photo} /></div>
+                <div style={{ padding: '10px 12px' }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: pl.color }}>{pl.text}</span>
+                </div>
+                <div style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <button onClick={() => handlePushFace(s)} disabled={!s.has_photo || pushingId === s.id}
+                    style={{ padding: '5px', borderRadius: 7, border: '1px solid #C7D2FE', background: '#EEF2FF', color: '#4F46E5', cursor: 'pointer', opacity: !s.has_photo || pushingId === s.id ? 0.4 : 1, display: 'flex' }}
+                    title="Yuzni qurilmaga yuklash">
+                    <Cpu style={{ width: 13, height: 13 }} />
+                  </button>
+                  <button onClick={() => openEdit(s)}
+                    style={{ padding: '5px', borderRadius: 7, border: '1px solid #E2E8F0', background: 'white', color: '#64748B', cursor: 'pointer', display: 'flex' }}>
+                    <Edit style={{ width: 13, height: 13 }} />
+                  </button>
+                  <button onClick={() => setDeleteStudent(s)}
+                    style={{ padding: '5px', borderRadius: 7, border: '1px solid #FECACA', background: '#FEF2F2', color: '#EF4444', cursor: 'pointer', display: 'flex' }}>
+                    <Trash2 style={{ width: 13, height: 13 }} />
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
       )}
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-slate-500">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 13, color: '#64748B' }}>
             {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} / {total}
-          </p>
-          <div className="flex items-center gap-1">
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-              className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40">
-              <ChevronLeft className="w-4 h-4" />
+              style={{ padding: '6px 10px', border: '1px solid #E2E8F0', borderRadius: 8, background: 'white', cursor: page === 1 ? 'not-allowed' : 'pointer', opacity: page === 1 ? 0.4 : 1, display: 'flex', alignItems: 'center' }}>
+              <ChevronLeft style={{ width: 15, height: 15, color: '#374151' }} />
             </button>
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
               const p = page <= 3 ? i + 1 : page >= totalPages - 2 ? totalPages - 4 + i : page - 2 + i
               if (p < 1 || p > totalPages) return null
               return (
-                <button key={p} onClick={() => setPage(p)}
-                  className={`w-9 h-9 rounded-lg text-sm font-medium border ${p === page ? 'bg-violet-600 text-white border-violet-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                <button key={p} onClick={() => setPage(p)} style={{
+                  width: 34, height: 34, borderRadius: 8, fontSize: 13, fontWeight: 600,
+                  border: `1px solid ${p === page ? '#4F46E5' : '#E2E8F0'}`,
+                  background: p === page ? '#4F46E5' : 'white',
+                  color: p === page ? 'white' : '#374151', cursor: 'pointer',
+                }}>
                   {p}
                 </button>
               )
             })}
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-              className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40">
-              <ChevronRight className="w-4 h-4" />
+              style={{ padding: '6px 10px', border: '1px solid #E2E8F0', borderRadius: 8, background: 'white', cursor: page === totalPages ? 'not-allowed' : 'pointer', opacity: page === totalPages ? 0.4 : 1, display: 'flex', alignItems: 'center' }}>
+              <ChevronRight style={{ width: 15, height: 15, color: '#374151' }} />
             </button>
           </div>
         </div>
@@ -426,71 +440,72 @@ export default function StudentsPage() {
 
       {/* Add/Edit Modal */}
       <Modal isOpen={showModal} onClose={() => setShowModal(false)}
-        title={editStudent ? "O'quvchini tahrirlash" : "Yangi o'quvchi qo'shish"}>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            <div className="col-span-3 sm:col-span-1">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Familiya *</label>
-              <input {...register('last_name', { required: true })} className={inputCls} placeholder="Karimov" />
-              {errors.last_name && <p className="text-xs text-red-500 mt-1">Majburiy</p>}
+        title={editStudent ? "O'quvchini tahrirlash" : "Yangi o'quvchi qo'shish"}
+        footer={modalFooter}
+      >
+        <form id="student-form" onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+            <div>
+              <label style={labelStyle}>Familiya *</label>
+              <input {...register('last_name', { required: true })} style={inputStyle} placeholder="Karimov" />
+              {errors.last_name && <p style={{ fontSize: 11.5, color: '#EF4444', marginTop: 3 }}>Majburiy</p>}
             </div>
-            <div className="col-span-3 sm:col-span-1">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Ism *</label>
-              <input {...register('first_name', { required: true })} className={inputCls} placeholder="Alisher" />
-              {errors.first_name && <p className="text-xs text-red-500 mt-1">Majburiy</p>}
+            <div>
+              <label style={labelStyle}>Ism *</label>
+              <input {...register('first_name', { required: true })} style={inputStyle} placeholder="Alisher" />
+              {errors.first_name && <p style={{ fontSize: 11.5, color: '#EF4444', marginTop: 3 }}>Majburiy</p>}
             </div>
-            <div className="col-span-3 sm:col-span-1">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Otasining ismi</label>
-              <input {...register('middle_name')} className={inputCls} placeholder="Alijonovich" />
+            <div>
+              <label style={labelStyle}>Otasining ismi</label>
+              <input {...register('middle_name')} style={inputStyle} placeholder="Alijonovich" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Tug'ilgan sana *</label>
-              <input {...register('birth_date', { required: true })} type="date" className={inputCls} />
+              <label style={labelStyle}>Tug'ilgan sana *</label>
+              <input {...register('birth_date', { required: true })} type="date" style={inputStyle} />
+              {errors.birth_date && <p style={{ fontSize: 11.5, color: '#EF4444', marginTop: 3 }}>Majburiy</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Jinsi *</label>
-              <select {...register('gender')} className={selectCls}>
+              <label style={labelStyle}>Jinsi *</label>
+              <select {...register('gender')} style={{ ...inputStyle, appearance: 'none' }}>
                 <option value="M">Erkak</option>
                 <option value="F">Ayol</option>
               </select>
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Maktab *</label>
-            <select {...register('school', { required: true })} className={selectCls}>
+            <label style={labelStyle}>Maktab *</label>
+            <select {...register('school', { required: true })} style={{ ...inputStyle, appearance: 'none' }}>
               <option value="">— Maktabni tanlang —</option>
               {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
-            {errors.school && <p className="text-xs text-red-500 mt-1">Maktab majburiy</p>}
+            {errors.school && <p style={{ fontSize: 11.5, color: '#EF4444', marginTop: 3 }}>Majburiy</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Sinf</label>
-            <select {...register('class_ref')} className={selectCls}>
+            <label style={labelStyle}>Sinf</label>
+            <select {...register('class_ref')} style={{ ...inputStyle, appearance: 'none' }}>
               <option value="">— Sinf tanlang —</option>
               {formClasses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Rasm (Face ID uchun)
-            </label>
+            <label style={labelStyle}>Rasm (Face ID uchun)</label>
             <input {...register('photo')} type="file" accept="image/*"
-              className="w-full text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-violet-50 file:text-violet-600 hover:file:bg-violet-100" />
-            <p className="text-xs text-slate-400 mt-1">JPG, PNG — max 5MB. Face ID uchun yuzni to'g'ri, aniq suratga oling.</p>
+              style={{ ...inputStyle, paddingTop: 6, paddingBottom: 6 }} />
+            <p style={{ fontSize: 11.5, color: '#94A3B8', marginTop: 4 }}>JPG, PNG — max 5MB. Yuzni to'g'ri, aniq suratga oling.</p>
           </div>
           {!editStudent && (
-            <div className="border-t border-slate-100 pt-4">
-              <h3 className="text-sm font-semibold text-slate-700 mb-3">Ota-ona (ixtiyoriy)</h3>
-              <div className="grid grid-cols-2 gap-3">
+            <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: 14 }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 10 }}>Ota-ona (ixtiyoriy)</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Telefon</label>
-                  <input {...register('parent_phone')} className={inputCls} placeholder="+998..." />
+                  <label style={labelStyle}>Telefon</label>
+                  <input {...register('parent_phone')} style={inputStyle} placeholder="+998..." />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Munosabat</label>
-                  <select {...register('relationship')} className={selectCls}>
+                  <label style={labelStyle}>Munosabat</label>
+                  <select {...register('relationship')} style={{ ...inputStyle, appearance: 'none' }}>
                     <option value="father">Ota</option>
                     <option value="mother">Ona</option>
                     <option value="guardian">Vasiy</option>
@@ -500,12 +515,21 @@ export default function StudentsPage() {
               </div>
             </div>
           )}
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="secondary" onClick={() => setShowModal(false)} type="button">Bekor qilish</Button>
-            <Button type="submit" loading={saving}>{editStudent ? 'Saqlash' : "Qo'shish"}</Button>
-          </div>
         </form>
       </Modal>
+
+      {deleteStudent && (
+        <ConfirmModal
+          isOpen
+          title="O'quvchini o'chirish"
+          message={`"${deleteStudent.full_name || deleteStudent.last_name + ' ' + deleteStudent.first_name}" ni o'chirasizmi? Bu amalni bekor qilib bo'lmaydi.`}
+          confirmLabel="O'chirish"
+          variant="danger"
+          loading={deleting}
+          onConfirm={handleDelete}
+          onCancel={() => setDeleteStudent(null)}
+        />
+      )}
     </div>
   )
 }

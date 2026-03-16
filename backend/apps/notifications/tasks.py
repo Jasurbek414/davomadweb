@@ -3,6 +3,7 @@ Notification tasks - Telegram bot orqali xabar yuborish
 """
 import logging
 import asyncio
+from typing import Optional
 from celery import shared_task
 from django.utils import timezone
 
@@ -11,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 @shared_task
 def send_telegram_notification(telegram_id: int, student_name: str, event_type: str,
-                                check_in: str = None, school_name: str = ''):
+                                check_in: Optional[str] = None, school_name: str = ''):
     """Ota-onaga Telegram orqali davomad xabari yuborish"""
     from django.conf import settings
     from django.utils import timezone as tz
@@ -60,7 +61,7 @@ def send_telegram_notification(telegram_id: int, student_name: str, event_type: 
             recipient=recipient,
             telegram_id=telegram_id,
             notification_type=event_type if event_type in ('check_in', 'check_out', 'absent', 'late') else 'system',
-            title=title[:200],
+            title=str(title)[:200],
             message=text,
             data={'student_name': student_name, 'event_type': event_type, 'check_in': check_in, 'school_name': school_name},
             status='pending',

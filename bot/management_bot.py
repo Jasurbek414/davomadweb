@@ -12,7 +12,7 @@ from decouple import config
 import aiohttp
 from datetime import date
 
-BOT_TOKEN = config('BOT_TOKEN', default='')
+BOT_TOKEN = config('MANAGEMENT_BOT_TOKEN', default=config('BOT_TOKEN', default=''))
 API_URL = config('API_URL', default='http://localhost:8000')
 BOT_SECRET = config('BOT_SECRET', default='')
 

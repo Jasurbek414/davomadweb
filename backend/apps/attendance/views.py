@@ -27,7 +27,7 @@ class AttendanceRecordViewSet(viewsets.ModelViewSet):
     ordering_fields = ['date', 'check_in', 'status']
 
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update']:
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsOperatorOrAbove()]
         return [IsTeacherOrAbove()]
 

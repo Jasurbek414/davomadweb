@@ -102,6 +102,11 @@ class Class(models.Model):
     def __str__(self):
         return f"{self.grade}-{self.section} ({self.school.name})"
 
+    def save(self, *args, **kwargs):
+        if not self.name:
+            self.name = f"{self.grade}-{self.section}"
+        super().save(*args, **kwargs)
+
     @property
     def students_count(self):
         return self.students.filter(is_active=True).count()
